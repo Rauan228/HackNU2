@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { jobsAPI } from '../services/api';
+import { Link, useNavigate } from 'react-router-dom';
+import { jobsAPI, applicationsAPI, resumesAPI } from '../services/api';
 import { type Job } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import { Search, MapPin, Building, DollarSign, Plus } from 'lucide-react';
+import { JobCard } from '../components/job/JobCard';
+import { Search, MapPin, Plus } from 'lucide-react';
 
 const Jobs: React.FC = () => {
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -15,6 +16,7 @@ const Jobs: React.FC = () => {
   const [hasMore, setHasMore] = useState(true);
   
   const { isEmployer } = useAuth();
+  const navigate = useNavigate();
 
   const fetchJobs = async (pageNum: number = 1, reset: boolean = false) => {
     try {
@@ -58,12 +60,41 @@ const Jobs: React.FC = () => {
     fetchJobs(nextPage, false);
   };
 
-  const formatSalary = (min?: number, max?: number) => {
-    if (!min && !max) return 'Зарплата не указана';
-    if (min && max) return `${min.toLocaleString()} - ${max.toLocaleString()} ₽`;
-    if (min) return `от ${min.toLocaleString()} ₽`;
-    if (max) return `до ${max.toLocaleString()} ₽`;
-    return '';
+  const handleApply = async (jobId: number) => {
+    try {
+      // Получаем список резюме пользователя
+      const resumesResponse = await resumesAPI.getResumes();
+      
+      if (!resumesResponse.data || resumesResponse.data.length === 0) {
+        alert('У вас нет резюме. Пожалуйста, создайте резюме перед подачей заявки.');
+        navigate('/create-resume');
+        return;
+      }
+      
+      // Используем первое доступное резюме
+      const firstResume = resumesResponse.data[0];
+      
+      const applicationData = {
+        job_id: jobId,
+        resume_id: firstResume.id,
+        cover_letter: "Заинтересован в данной позиции. Готов обсудить детали."
+      };
+      
+      await applicationsAPI.createApplication(applicationData);
+      console.log('Отклик успешно отправлен на вакансию:', jobId);
+      
+      // Обновляем список вакансий чтобы показать что отклик отправлен
+      fetchJobs(1, true);
+    } catch (error) {
+      console.error('Ошибка при отправке отклика:', error);
+      console.error('Детали ошибки:', (error as any).response?.data);
+      console.error('Статус ошибки:', (error as any).response?.status);
+      alert(`Ошибка при отправке отклика: ${(error as any).response?.data?.detail || (error as any).message}`);
+    }
+  };
+
+  const handleViewDetails = (jobId: number) => {
+    navigate(`/jobs/${jobId}`);
   };
 
   return (
@@ -119,56 +150,34 @@ const Jobs: React.FC = () => {
               </div>
             </div>
           </div>
-          <button
-            type="submit"
-            className="w-full md:w-auto px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            Найти вакансии
-          </button>
+          <div className="flex justify-end">
+            <button
+              type="submit"
+              className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              Найти
+            </button>
+          </div>
         </form>
       </div>
 
       {/* Error */}
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md">
-          {error}
+        <div className="bg-red-50 border border-red-200 rounded-md p-4">
+          <p className="text-red-800">{error}</p>
         </div>
       )}
 
-      {/* Jobs List */}
-      <div className="space-y-4">
+      {/* Jobs Grid */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {jobs.map((job) => (
-          <div key={job.id} className="bg-white p-6 rounded-lg shadow hover:shadow-md transition-shadow">
-            <div className="flex justify-between items-start">
-              <div className="flex-1">
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                  <Link to={`/jobs/${job.id}`} className="hover:text-blue-600">
-                    {job.title}
-                  </Link>
-                </h3>
-                <div className="flex items-center space-x-4 text-sm text-gray-600 mb-3">
-                  <div className="flex items-center">
-                    <Building className="h-4 w-4 mr-1" />
-                    {job.company_name}
-                  </div>
-                  <div className="flex items-center">
-                    <MapPin className="h-4 w-4 mr-1" />
-                    {job.location}
-                  </div>
-                  <div className="flex items-center">
-                    <DollarSign className="h-4 w-4 mr-1" />
-                    {formatSalary(job.salary_min, job.salary_max)}
-                  </div>
-                </div>
-                <p className="text-gray-700 mb-4 line-clamp-3">
-                  {job.description}
-                </p>
-                <div className="text-sm text-gray-500">
-                  Опубликовано: {new Date(job.created_at).toLocaleDateString('ru-RU')}
-                </div>
-              </div>
-            </div>
-          </div>
+          <JobCard
+            key={job.id}
+            job={job}
+            onApply={handleApply}
+            onViewDetails={handleViewDetails}
+            showApplyButton={!isEmployer}
+          />
         ))}
       </div>
 

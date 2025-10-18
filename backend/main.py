@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from core.config import settings
-from api import auth, jobs, resumes, applications, chat
+from api import auth, jobs, resumes, applications, chat, smartbot
 
 app = FastAPI(
     title="JobBoard + SmartBot API",
@@ -24,6 +24,7 @@ app.include_router(jobs.router, prefix="/api")
 app.include_router(resumes.router, prefix="/api")
 app.include_router(applications.router, prefix="/api")
 app.include_router(chat.router, prefix="/api")
+app.include_router(smartbot.router)
 
 
 @app.get("/")

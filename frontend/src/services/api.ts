@@ -51,7 +51,10 @@ export interface Job {
   requirements?: string;
   salary_min?: number;
   salary_max?: number;
+  salary_currency?: string;
   location?: string;
+  employment_type?: string;
+  experience_level?: string;
   company_name: string;
   is_active: boolean;
   employer_id: number;
@@ -66,6 +69,12 @@ export interface Resume {
   experience?: string;
   education?: string;
   skills?: string;
+  languages?: string;
+  portfolio_url?: string;
+  desired_position?: string;
+  desired_salary?: number;
+  location?: string;
+  is_public?: boolean;
   user_id: number;
   created_at: string;
   updated_at: string;
@@ -153,7 +162,7 @@ export const jobsAPI = {
 
 // Resumes API
 export const resumesAPI = {
-  getResumes: () => api.get<Resume[]>('/resumes'),
+  getResumes: () => api.get<Resume[]>('/resumes/'),
 
   getResume: (id: number) => api.get<Resume>(`/resumes/${id}`),
 
@@ -163,7 +172,13 @@ export const resumesAPI = {
     experience?: string;
     education?: string;
     skills?: string;
-  }) => api.post<Resume>('/resumes', data),
+    languages?: string;
+    portfolio_url?: string;
+    desired_position?: string;
+    desired_salary?: number;
+    location?: string;
+    is_public?: boolean;
+  }) => api.post<Resume>('/resumes/', data),
 
   updateResume: (id: number, data: Partial<Resume>) =>
     api.put<Resume>(`/resumes/${id}`, data),
@@ -173,7 +188,7 @@ export const resumesAPI = {
 
 // Applications API
 export const applicationsAPI = {
-  getApplications: () => api.get<Application[]>('/applications'),
+  getApplications: () => api.get<Application[]>('/applications/'),
 
   getApplication: (id: number) => api.get<Application>(`/applications/${id}`),
 
@@ -181,7 +196,7 @@ export const applicationsAPI = {
     job_id: number;
     resume_id: number;
     cover_letter?: string;
-  }) => api.post<Application>('/applications', data),
+  }) => api.post<Application>('/applications/', data),
 
   updateApplication: (id: number, data: {
     cover_letter?: string;

@@ -192,6 +192,11 @@ def update_application(
             )
     
     update_data = application_data.dict(exclude_unset=True)
+    # Ensure status is stored as lowercase string
+    if 'status' in update_data and update_data['status'] is not None:
+        # Pydantic provides ApplicationStatus enum; convert to its value
+        update_data['status'] = update_data['status'].value if hasattr(update_data['status'], 'value') else str(update_data['status']).lower()
+
     for field, value in update_data.items():
         setattr(application, field, value)
     

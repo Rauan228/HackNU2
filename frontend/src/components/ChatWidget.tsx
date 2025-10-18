@@ -85,7 +85,8 @@ const ChatWidget: React.FC = () => {
     });
   };
 
-  if (!user) {
+  // Не показываем чат для работодателей
+  if (!user || user.user_type === 'employer') {
     return null;
   }
 
