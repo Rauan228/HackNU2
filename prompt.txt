@@ -1,0 +1,597 @@
+Сгенерируй минимально-жизнеспособное веб-приложение (MVP) “JobBoard + SmartBot” со следующими требованиями.
+
+0) Цель
+
+Сделать простой клон доски вакансий: работодатели публикуют вакансии, соискатели откликаются, сразу открывается виджет чата SmartBot сбоку, бот задаёт уточняющие вопросы, сохраняет диалог и считает процент релевантности. Нужен работающий функционал, дизайн максимально простой.
+
+1) Технологический стек
+
+Frontend: React 18+, Vite или Create React App. Минимальный UI без сложных библиотек. Можно использовать только CSS/Tailwind или простую CSS-модульную верстку.
+
+Backend: Python 3.11+, FastAPI + Uvicorn.
+
+DB: PostgreSQL. Дай SQL-скрипт для pgAdmin (создание таблиц + тестовые данные).
+
+Миграции: опционально Alembic; если не используешь — оставь отдельный .sql файл.
+
+Auth: простая сессия по JWT (регистрация/логин).
+
+SmartBot: интеграция с OpenAI API (ключ из .env). Если ключа нет — работать в «заглушке» (рандомные ответы/демо-логика).
+
+2) Архитектура каталогов (предпочтительно)
+/app
+  /backend
+    main.py
+    /api
+      auth.py
+      jobs.py
+      resumes.py
+      applications.py
+      smartbot.py
+    /core
+      config.py
+      db.py
+      security.py
+    /models
+      __init__.py
+      users.py
+      jobs.py
+      resumes.py
+      applications.py
+      smartbot.py
+    /schemas
+      auth.py
+      users.py
+      jobs.py
+      resumes.py
+      applications.py
+      smartbot.py
+    /services
+      smartbot_service.py
+    /sql
+      create_tables.sql
+      insert_seed.sql
+  /frontend
+    index.html
+    /src
+      main.tsx|jsx
+      App.tsx|jsx
+      /components
+        Header.tsx
+        JobCard.tsx
+        ChatWidget.tsx  // выезжающий сбоку виджет
+      /pages
+        Home.tsx            // список вакансий
+        JobDetails.tsx      // карточка вакансии + кнопка "Откликнуться"
+        SignIn.tsx
+        SignUp.tsx
+        Profile.tsx         // соискатель: резюме
+        EmployerDashboard.tsx  // работодатель: мои вакансии, отклики
+        Applications.tsx    // список откликов со % релевантности
+      /api
+        client.ts           // axios базовая конфигурация
+        auth.ts
+        jobs.ts
+        resumes.ts
+        applications.ts
+        smartbot.ts
+    /public
+.env.example
+README.md
+
+3) Упрощённая схема БД (обязательна)
+
+Сгенерируй один SQL файл create_tables.sql для pgAdmin (PostgreSQL 15+), без расширений. Используй SERIAL/INTEGER id, триггер для updated_at. Таблицы:
+
+users
+
+id SERIAL PK
+
+email VARCHAR(255) UNIQUE NOT NULL
+
+hashed_password VARCHAR(255) NOT NULL
+
+full_name VARCHAR(255) NOT NULL
+
+phone VARCHAR(50) NULL
+
+user_type VARCHAR(20) NOT NULL CHECK (job_seeker|employer)
+
+is_active BOOLEAN DEFAULT TRUE
+
+created_at timestamptz default now()
+
+updated_at timestamptz default now()
+
+jobs
+
+id SERIAL PK
+
+employer_id INT FK → users(id) ON DELETE CASCADE
+
+title VARCHAR(255) NOT NULL
+
+description TEXT NOT NULL
+
+requirements TEXT NULL
+
+location VARCHAR(255) NULL
+
+employment_type VARCHAR(20) CHECK (full_time|part_time|contract|internship)
+
+experience_level VARCHAR(20) CHECK (junior|middle|senior)
+
+salary_min NUMERIC(12,2) NULL
+
+salary_max NUMERIC(12,2) NULL
+
+salary_currency VARCHAR(10) DEFAULT 'KZT'
+
+remote_work BOOLEAN DEFAULT FALSE
+
+is_active BOOLEAN DEFAULT TRUE
+
+created_at/updated_at timestamps + триггер
+
+resumes
+
+id SERIAL PK
+
+user_id INT FK → users(id) ON DELETE CASCADE
+
+title VARCHAR(255) NOT NULL
+
+summary TEXT NULL
+
+experience TEXT NULL
+
+education TEXT NULL
+
+skills TEXT NULL
+
+languages TEXT NULL
+
+portfolio_url VARCHAR(500) NULL
+
+desired_position VARCHAR(255) NULL
+
+desired_salary NUMERIC(12,2) NULL
+
+location VARCHAR(255) NULL
+
+is_public BOOLEAN DEFAULT TRUE
+
+created_at/updated_at timestamps + триггер
+
+job_applications
+
+id SERIAL PK
+
+user_id INT FK → users(id) ON DELETE CASCADE // кандидат
+
+job_id INT FK → jobs(id) ON DELETE CASCADE
+
+resume_id INT FK → resumes(id) ON DELETE SET NULL
+
+cover_letter TEXT NULL
+
+status VARCHAR(20) DEFAULT 'pending' CHECK (pending|in_review|accepted|rejected)
+
+created_at/updated_at + триггер
+
+UNIQUE(user_id, job_id)
+
+ai_chat_sessions
+
+id SERIAL PK
+
+application_id INT UNIQUE FK → job_applications(id) ON DELETE CASCADE
+
+lang VARCHAR(2) CHECK (ru|kk) NOT NULL
+
+model VARCHAR(64) DEFAULT 'gpt-4o-mini' NOT NULL
+
+started_at timestamptz default now()
+
+completed_at timestamptz NULL
+
+is_completed BOOLEAN DEFAULT FALSE NOT NULL
+
+relevance_score NUMERIC(5,2) NULL // 0..100
+
+summary_text TEXT NULL
+
+reasons_json JSONB NULL // {"location":"...", "experience":"..."}
+
+transcript_cache TEXT NULL
+
+created_at/updated_at + триггер
+
+ai_chat_messages
+
+id SERIAL PK
+
+session_id INT FK → ai_chat_sessions(id) ON DELETE CASCADE
+
+role VARCHAR(16) CHECK (system|assistant|candidate) NOT NULL
+
+content TEXT NOT NULL
+
+created_at timestamptz default now()
+
+Сгенерируй insert_seed.sql с 2 работодателями, 2 соискателями, 3 вакансиями, 2 резюме, 2 откликами. Один отклик должен иметь связанную сессию SmartBot и 3–4 сообщения (system/assistant/candidate).
+
+4) Бэкенд (FastAPI)
+Запуск
+
+uvicorn backend.main:app --reload
+
+Настройка CORS для фронта http://localhost:5173 (или 3000).
+
+ENV
+
+Создай .env.example:
+
+DATABASE_URL=postgresql+psycopg2://postgres:postgres@localhost:5432/jobboard
+JWT_SECRET=devsecret
+JWT_ALG=HS256
+OPENAI_API_KEY=sk-...
+
+
+FastAPI должен читать из .env (python-dotenv). Если OPENAI_API_KEY пуст — SmartBot работает в демо-режиме (рандомная релевантность + фиктивные вопросы/ответы).
+
+Модели/ORM
+
+Можно использовать SQLAlchemy без Alembic (минимум зависимостей). В backend/sql/create_tables.sql — чистый SQL для pgAdmin. Подключение через psycopg2/asyncpg (на твой выбор).
+
+Маршруты (обязательно)
+
+Auth
+
+POST /auth/register (email, password, full_name, user_type)
+
+POST /auth/login → JWT
+
+GET /auth/me
+
+Jobs
+
+GET /jobs (пагинация, фильтры: location, text)
+
+GET /jobs/{id}
+
+POST /jobs (только employer) — создать вакансию
+
+PUT /jobs/{id} (только автор)
+
+DELETE /jobs/{id} (только автор)
+
+Resumes (только job_seeker владелец)
+
+GET /resumes/mine
+
+POST /resumes
+
+PUT /resumes/{id}
+
+DELETE /resumes/{id}
+
+Applications
+
+POST /applications (body: job_id, resume_id?, cover_letter?)
+Создаёт отклик и сразу создаёт ai_chat_sessions (lang по UI).
+
+GET /applications/mine (для соискателя)
+
+GET /employer/applications (для работодателя — по его вакансиям)
+
+GET /applications/{id}
+
+PATCH /applications/{id} (изменить статус: in_review/accepted/rejected)
+
+SmartBot
+
+GET /smartbot/session/{application_id} → вернуть (создать если нет) ai_chat_session
+
+GET /smartbot/messages/{session_id} → список сообщений
+
+POST /smartbot/send (session_id, user_text)
+Логика: сохранить сообщение candidate, вызвать сервис:
+
+Если есть OPENAI_API_KEY → запрос в OpenAI (chat.completions), получить ответ ассистента, обновить reasons_json/relevance_score эвристически, сохранить assistant.
+
+Если ключа нет → сгенерировать фиктивный ответ и случайную relevance_score.
+
+POST /smartbot/complete/{session_id} → пометить is_completed=true, положить summary_text (краткая выжимка).
+
+Сервис services/smartbot_service.py должен содержать:
+
+функцию для генерации/обновления relevance_score (по полям вакансии/резюме + диалог),
+
+шаблон промпта для уточняющих вопросов (RU/KZ),
+
+режим stub при пустом ключе.
+
+5) Фронтенд (React)
+Общие требования
+
+Axios клиент /src/api/client.ts с базовым URL и интерсептором для JWT.
+
+Простой роутинг (react-router): /, /jobs/:id, /signin, /signup, /profile, /employer.
+
+Хранить токен в localStorage. Простая защита роутов.
+
+Страницы/UX
+
+Home: список вакансий (карточки: title, location, salary, кнопка “Подробнее”).
+
+JobDetails: описание, кнопка “Откликнуться” → если соискатель, POST /applications → после успеха открыть ChatWidget справа (панель/дровер), начать сессию SmartBot через API.
+
+SignIn/SignUp: простые формы.
+
+Profile (job_seeker): редактирование простого резюме (title, summary, experience, skills).
+
+EmployerDashboard: «мои вакансии» (CRUD), таб «Отклики»: таблица из /employer/applications с колонками: кандидат, резюме, статус, % релевантности, кнопка «Чат» (открывает диалог read-only).
+
+ChatWidget: прикреплённый к правому краю дровер:
+
+список сообщений (role: system/assistant/candidate)
+
+input для отправки; POST /smartbot/send
+
+индикатор завершения; при завершении — показать summary_text и relevance_score
+
+поддержать RU/KK (переключатель языка — отправлять lang в сессию)
+
+Визуал / стиль
+
+Минимальный: flex/grid, без heavy UI-библиотек. Только базовая адаптивность.
+
+6) Docker (опционально, но желательно)
+
+docker-compose.yml с сервисами:
+
+db (postgres:15, креды из .env)
+
+backend (FastAPI, порт 8000)
+
+frontend (Vite dev server, порт 5173)
+
+Если docker не генерируешь — добавь в README локальные команды запуска и инструкцию как импортировать SQL в pgAdmin.
+
+7) README (обязательно)
+
+Опиши:
+
+как завести БД (pgAdmin → выполнить create_tables.sql, затем insert_seed.sql);
+
+как сконфигурировать .env;
+
+как запустить бэк/фронт;
+
+тестовый сценарий:
+
+зарегистрировать employer, создать вакансию;
+
+зарегистрировать job_seeker, создать резюме;
+
+открыть вакансию, нажать “Откликнуться” → откроется чат SmartBot;
+
+написать 2–3 ответа → завершить → в кабинете работодателя видно % и summary.
+
+8) Качество и проверка
+
+Используй Pydantic-схемы (request/response), статусы ошибок, валидацию.
+
+Все эндпоинты должны иметь минимальные тестовые curl в README:
+
+POST /auth/register, POST /auth/login
+
+POST /jobs, GET /jobs
+
+POST /applications
+
+GET /smartbot/messages/{session_id}, POST /smartbot/send
+
+Код разделён по слоям: models/schemas/api/services.
+
+Никаких “GENERATED ALWAYS AS STORED” в SQL, никаких расширений Postgres — чтобы скрипты гарантированно отработали в pgAdmin.
+
+По возможности, не привязывайся к сторонним платным SDK.
+
+Сгенерируй весь проект и выведи:
+
+краткую структуру файлов;
+
+тексты create_tables.sql и insert_seed.sql;
+
+основные фрагменты FastAPI (models/schemas/routes);
+
+компоненты фронта (особенно ChatWidget и JobDetails);
+
+README с пошаговым запуском.
+
+
+НАША СТРУКТУРА БД
+-- =========================================
+-- Minimal Job Board + SmartBot (PostgreSQL)
+-- =========================================
+
+-- 1) утилита для updated_at (как у тебя)
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- =========================
+-- USERS
+-- =========================
+-- одна таблица пользователей с типом: соискатель / работодатель(рекрутер)
+CREATE TABLE IF NOT EXISTS users (
+    id              SERIAL PRIMARY KEY,
+    email           VARCHAR(255) UNIQUE NOT NULL,
+    hashed_password VARCHAR(255) NOT NULL,
+    full_name       VARCHAR(255) NOT NULL,
+    phone           VARCHAR(50),
+    user_type       VARCHAR(20) NOT NULL CHECK (user_type IN ('job_seeker','employer')),
+    is_active       BOOLEAN DEFAULT TRUE,
+    created_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at      TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_users_user_type ON users(user_type);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+DROP TRIGGER IF EXISTS trg_users_updated ON users;
+CREATE TRIGGER trg_users_updated BEFORE UPDATE ON users
+FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- =========================
+-- JOBS
+-- =========================
+-- вакансии привязываем напрямую к employer (users.id)
+CREATE TABLE IF NOT EXISTS jobs (
+    id               SERIAL PRIMARY KEY,
+    employer_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title            VARCHAR(255) NOT NULL,
+    description      TEXT NOT NULL,
+    requirements     TEXT,
+    location         VARCHAR(255),
+    employment_type  VARCHAR(20) CHECK (employment_type IN ('full_time','part_time','contract','internship')),
+    experience_level VARCHAR(20) CHECK (experience_level IN ('junior','middle','senior')),
+    salary_min       NUMERIC(12,2),
+    salary_max       NUMERIC(12,2),
+    salary_currency  VARCHAR(10) DEFAULT 'KZT',
+    remote_work      BOOLEAN DEFAULT FALSE,
+    is_active        BOOLEAN DEFAULT TRUE,
+    created_at       TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at       TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_jobs_employer_id ON jobs(employer_id);
+CREATE INDEX IF NOT EXISTS idx_jobs_location ON jobs(location);
+CREATE INDEX IF NOT EXISTS idx_jobs_is_active ON jobs(is_active);
+DROP TRIGGER IF EXISTS trg_jobs_updated ON jobs;
+CREATE TRIGGER trg_jobs_updated BEFORE UPDATE ON jobs
+FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- =========================
+-- RESUMES
+-- =========================
+-- простая «плоская» модель резюме (без разнормализации)
+CREATE TABLE IF NOT EXISTS resumes (
+    id               SERIAL PRIMARY KEY,
+    user_id          INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title            VARCHAR(255) NOT NULL,
+    summary          TEXT,
+    experience       TEXT,           -- произвольный текст: опыт
+    education        TEXT,           -- произвольный текст: образование
+    skills           TEXT,           -- запятая/JSON по желанию
+    languages        TEXT,
+    portfolio_url    VARCHAR(500),
+    desired_position VARCHAR(255),
+    desired_salary   NUMERIC(12,2),
+    location         VARCHAR(255),
+    is_public        BOOLEAN DEFAULT TRUE,
+    created_at       TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at       TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_resumes_user_id ON resumes(user_id);
+DROP TRIGGER IF EXISTS trg_resumes_updated ON resumes;
+CREATE TRIGGER trg_resumes_updated BEFORE UPDATE ON resumes
+FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- =========================
+-- APPLICATIONS (отклики)
+-- =========================
+-- связь соискатель ↔ вакансия, + статус и сопроводительное
+CREATE TABLE IF NOT EXISTS job_applications (
+    id            SERIAL PRIMARY KEY,
+    user_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,   -- кандидат
+    job_id        INTEGER NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+    resume_id     INTEGER REFERENCES resumes(id) ON DELETE SET NULL,
+    cover_letter  TEXT,
+    status        VARCHAR(20) NOT NULL DEFAULT 'pending'
+                   CHECK (status IN ('pending','in_review','accepted','rejected')),
+    created_at    TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at    TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE (user_id, job_id)  -- 1 отклик на вакансию
+);
+CREATE INDEX IF NOT EXISTS idx_applications_job_id ON job_applications(job_id);
+CREATE INDEX IF NOT EXISTS idx_applications_user_id ON job_applications(user_id);
+CREATE INDEX IF NOT EXISTS idx_applications_status ON job_applications(status);
+DROP TRIGGER IF EXISTS trg_job_applications_updated ON job_applications;
+CREATE TRIGGER trg_job_applications_updated BEFORE UPDATE ON job_applications
+FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- =========================
+-- SMARTBOT: СЕССИИ и СООБЩЕНИЯ
+-- =========================
+-- Сессия SmartBot создаётся на каждый отклик (1:1)
+CREATE TABLE IF NOT EXISTS ai_chat_sessions (
+    id               SERIAL PRIMARY KEY,
+    application_id   INTEGER NOT NULL UNIQUE REFERENCES job_applications(id) ON DELETE CASCADE,
+    lang             VARCHAR(2) NOT NULL CHECK (lang IN ('ru','kk')),
+    model            VARCHAR(64) NOT NULL DEFAULT 'gpt-4o-mini',
+    started_at       TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    completed_at     TIMESTAMP WITH TIME ZONE,
+    is_completed     BOOLEAN NOT NULL DEFAULT FALSE,
+    relevance_score  NUMERIC(5,2),     -- 0..100
+    summary_text     TEXT,             -- итоговая выжимка для работодателя
+    reasons_json     JSONB,            -- { "experience": "...", "location": "...", ... } (опционально)
+    transcript_cache TEXT,             -- сводка диалога (опционально для быстрого поиска)
+    created_at       TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at       TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_ai_sessions_relevance ON ai_chat_sessions(relevance_score);
+DROP TRIGGER IF EXISTS trg_ai_sessions_updated ON ai_chat_sessions;
+CREATE TRIGGER trg_ai_sessions_updated BEFORE UPDATE ON ai_chat_sessions
+FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Сообщения диалога (хронологический лог)
+CREATE TABLE IF NOT EXISTS ai_chat_messages (
+    id          SERIAL PRIMARY KEY,
+    session_id  INTEGER NOT NULL REFERENCES ai_chat_sessions(id) ON DELETE CASCADE,
+    role        VARCHAR(16) NOT NULL CHECK (role IN ('system','assistant','candidate')),
+    content     TEXT NOT NULL,
+    created_at  TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_ai_messages_session_time ON ai_chat_messages(session_id, created_at);
+
+-- =========================
+-- УДОБНЫЕ ПРЕДСТАВЛЕНИЯ (для кабинета работодателя)
+-- =========================
+
+-- Список откликов с релевантностью и краткой выжимкой
+CREATE OR REPLACE VIEW employer_applications_overview AS
+SELECT
+    ja.id                AS application_id,
+    j.id                 AS job_id,
+    j.title              AS job_title,
+    u_cand.id            AS candidate_id,
+    u_cand.full_name     AS candidate_name,
+    r.title              AS resume_title,
+    ja.status,
+    s.relevance_score,
+    s.summary_text,
+    ja.created_at
+FROM job_applications ja
+JOIN jobs j            ON j.id = ja.job_id
+JOIN users u_cand      ON u_cand.id = ja.user_id
+LEFT JOIN resumes r    ON r.id = ja.resume_id
+LEFT JOIN ai_chat_sessions s ON s.application_id = ja.id
+ORDER BY ja.created_at DESC;
+
+-- Сообщения диалога по отклику (для просмотра переписки)
+CREATE OR REPLACE VIEW employer_application_chat AS
+SELECT
+    ja.id           AS application_id,
+    m.created_at,
+    m.role,
+    m.content
+FROM job_applications ja
+JOIN ai_chat_sessions s ON s.application_id = ja.id
+JOIN ai_chat_messages m ON m.session_id = s.id
+ORDER BY m.created_at ASC;
+
+
