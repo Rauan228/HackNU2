@@ -1,0 +1,3 @@
+# маски для любых OpenAI ключей
+regex:(?i)sk-[a-z0-9_-]{20,}==>sk-REDACTED
+regex:(?i)sk-proj-[a-z0-9_-]{20,}==>sk-proj-REDACTED
