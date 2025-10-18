@@ -18,7 +18,7 @@ class User(Base):
     hashed_password = Column(String(255), nullable=False)
     full_name = Column(String(255), nullable=False)
     phone = Column(String(50), nullable=True)
-    user_type = Column(Enum(UserType), nullable=False)
+    user_type = Column(Enum(UserType, values_callable=lambda obj: [e.value for e in obj], native_enum=False), nullable=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
