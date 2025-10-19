@@ -1,6 +1,7 @@
-import openai
 import json
 import uuid
+import asyncio
+import logging
 from typing import List, Dict, Any, Optional, Tuple
 from sqlalchemy.orm import Session
 from core.config import settings
@@ -19,8 +20,6 @@ class ApplicationAnalyzer:
     
     def __init__(self):
         self.openai_available = bool(settings.openai_api_key)
-        if self.openai_available:
-            openai.api_key = settings.openai_api_key
     
     async def start_analysis_session(self, db: Session, application: JobApplication) -> SmartBotSession:
         """Start a new SmartBot analysis session for an application"""
@@ -29,7 +28,7 @@ class ApplicationAnalyzer:
         session = SmartBotSession(
             session_id=str(uuid.uuid4()),
             application_id=application.id,
-            status=SmartBotSessionStatus.ANALYZING
+            status=SmartBotSessionStatus.ACTIVE
         )
         db.add(session)
         db.commit()
@@ -52,19 +51,25 @@ class ApplicationAnalyzer:
             # Save initial analysis
             candidate_analysis = CandidateAnalysis(
                 session_id=session.session_id,
+                relevance_score=analysis_result.get("initial_score", 50),
                 initial_score=analysis_result.get("initial_score", 50),
                 strengths=json.dumps(analysis_result.get("strengths", []), ensure_ascii=False),
                 weaknesses=json.dumps(analysis_result.get("concerns", []), ensure_ascii=False),
+                clarifications_received=json.dumps({"items": []}, ensure_ascii=False),
                 summary="Первичный анализ завершен",
-                status=AnalysisStatus.IN_PROGRESS
+                status=AnalysisStatus.IN_PROGRESS.value,
+                questions_asked=1 if analysis_result.get("questions") else 0,
+                recommendation=analysis_result.get("recommendation")
             )
             db.add(candidate_analysis)
+            db.commit()
+            db.refresh(candidate_analysis)
             
             # Save analysis categories
             for discrepancy in analysis_result.get("discrepancies", []):
                 category = AnalysisCategory(
                     analysis_id=candidate_analysis.id,
-                    category_name=discrepancy.get("category", "общее"),
+                    category=discrepancy.get("category", "общее"),
                     status="mismatch",
                     score=self._calculate_category_score(discrepancy.get("severity", "medium")),
                     details=discrepancy.get("issue", "")
@@ -80,10 +85,10 @@ class ApplicationAnalyzer:
                     session_id=session.session_id,
                     message_type=SmartBotMessageType.QUESTION,
                     content=welcome_message,
-                    metadata=json.dumps({
+                    message_metadata=json.dumps({
                         "question_category": first_question.get("category"),
                         "question_reason": first_question.get("reason"),
-                        "remaining_questions": analysis_result["questions"][1:]
+                        "remaining_questions": []
                     }, ensure_ascii=False)
                 )
                 db.add(bot_message)
@@ -95,7 +100,8 @@ class ApplicationAnalyzer:
                 bot_message = SmartBotMessage(
                     session_id=session.session_id,
                     message_type=SmartBotMessageType.INFO,
-                    content=welcome_message
+                    content=welcome_message,
+                    message_metadata=None
                 )
                 db.add(bot_message)
             
@@ -120,7 +126,8 @@ class ApplicationAnalyzer:
         user_msg = SmartBotMessage(
             session_id=session_id,
             message_type=SmartBotMessageType.ANSWER,
-            content=user_message
+            content=user_message,
+            message_metadata=None
         )
         db.add(user_msg)
         
@@ -137,64 +144,77 @@ class ApplicationAnalyzer:
                 break
         
         remaining_questions = []
-        if last_bot_message and last_bot_message.metadata:
+        metadata = {}
+        if last_bot_message and last_bot_message.message_metadata:
             try:
-                metadata = json.loads(last_bot_message.metadata)
+                metadata = json.loads(last_bot_message.message_metadata)
                 remaining_questions = metadata.get("remaining_questions", [])
-            except:
-                pass
-        
-        # Determine next action
-        if remaining_questions:
-            # Ask next question
-            next_question = remaining_questions[0]
-            remaining_questions = remaining_questions[1:]
-            
-            bot_response = next_question["question"]
-            
-            bot_message = SmartBotMessage(
-                session_id=session_id,
-                message_type=SmartBotMessageType.QUESTION,
-                content=bot_response,
-                metadata=json.dumps({
-                    "question_category": next_question.get("category"),
-                    "question_reason": next_question.get("reason"),
-                    "remaining_questions": remaining_questions
-                }, ensure_ascii=False)
-            )
-            db.add(bot_message)
-            
-        else:
-            # Complete analysis
-            final_analysis = await self._finalize_analysis(db, session_id)
-            
-            bot_response = "Спасибо за ответы! Анализ завершен. Работодатель получит подробную информацию о вашем профиле."
-            
-            bot_message = SmartBotMessage(
-                session_id=session_id,
-                message_type=SmartBotMessageType.COMPLETION,
-                content=bot_response
-            )
-            db.add(bot_message)
-            
-            # Update session status
-            session.status = SmartBotSessionStatus.COMPLETED
-            
-            # Update analysis with final results
-            analysis = db.query(CandidateAnalysis).filter(
-                CandidateAnalysis.session_id == session_id
-            ).first()
-            
-            if analysis:
-                analysis.final_score = final_analysis.get("final_score", analysis.initial_score)
-                analysis.summary = final_analysis.get("summary", "Анализ завершен")
-                analysis.status = AnalysisStatus.COMPLETED
-        
+            except Exception:
+                metadata = {}
+
+        # Store candidate answer and increment counters
+        analysis = db.query(CandidateAnalysis).filter(
+            CandidateAnalysis.session_id == session_id
+        ).first()
+
+        if analysis:
+            # Normalize existing clarifications into dict with items list
+            items: List[Dict[str, Any]] = []
+            try:
+                clar_data = analysis.clarifications_received
+                if isinstance(clar_data, str):
+                    clar_obj = json.loads(clar_data)
+                else:
+                    clar_obj = clar_data or {}
+                if isinstance(clar_obj, dict):
+                    items = clar_obj.get("items", []) or []
+                elif isinstance(clar_obj, list):
+                    items = clar_obj
+            except Exception:
+                items = []
+
+            answer_entry = {
+                "question_category": metadata.get("question_category"),
+                "question_reason": metadata.get("question_reason"),
+                "answer": user_message
+            }
+            items.append(answer_entry)
+            analysis.clarifications_received = json.dumps({"items": items}, ensure_ascii=False)
+            analysis.questions_answered = (analysis.questions_answered or 0) + 1
+
+        # Complete analysis immediately after first answer (single-question flow)
+        final_analysis = await self._finalize_analysis(db, session_id)
+
+        bot_response = "Спасибо за ответы! Анализ завершен. Работодатель получит подробную информацию о вашем профиле."
+
+        bot_message = SmartBotMessage(
+            session_id=session_id,
+            message_type=SmartBotMessageType.COMPLETION,
+            content=bot_response,
+            message_metadata=None
+        )
+        db.add(bot_message)
+
+        # Update session status
+        session.status = SmartBotSessionStatus.COMPLETED
+
+        # Update analysis with final results
+        analysis = db.query(CandidateAnalysis).filter(
+            CandidateAnalysis.session_id == session_id
+        ).first()
+
+        if analysis:
+            analysis.final_score = final_analysis.get("final_score", analysis.initial_score)
+            analysis.summary = final_analysis.get("summary", "Анализ завершен")
+            analysis.status = AnalysisStatus.COMPLETED.value
+            analysis.recommendation = final_analysis.get("recommendation", analysis.recommendation)
+            analysis.analysis_completed = True
+
         db.commit()
-        
+
         return {
             "message": bot_response,
-            "session_status": session.status.value,
+            "session_status": session.status,
             "is_completed": session.status == SmartBotSessionStatus.COMPLETED
         }
     
@@ -241,14 +261,14 @@ class ApplicationAnalyzer:
     def _extract_candidate_profile(self, resume: Resume, user: User) -> Dict[str, Any]:
         """Extract structured profile from candidate resume and user data"""
         return {
-            "name": f"{user.first_name} {user.last_name}",
-            "email": user.email,
-            "phone": user.phone,
-            "city": user.city,
-            "skills": resume.skills,
-            "experience": resume.experience,
-            "education": resume.education,
-            "summary": resume.summary
+            "name": user.full_name or "Не указано",
+            "email": user.email or "Не указан",
+            "phone": user.phone or "Не указан",
+            "city": resume.location or "Не указан",
+            "skills": resume.skills or "Не указаны",
+            "experience": resume.experience or "Не указан",
+            "education": resume.education or "Не указано",
+            "summary": resume.summary or "Не указано"
         }
     
     def _create_analysis_prompt(self, job_data: Dict, candidate_data: Dict) -> str:
@@ -309,26 +329,44 @@ class ApplicationAnalyzer:
         return prompt
     
     async def _call_openai_analysis(self, prompt: str) -> str:
-        """Call OpenAI API for analysis"""
-        try:
-            response = await openai.ChatCompletion.acreate(
-                model="gpt-4",
-                messages=[
-                    {"role": "system", "content": "Ты SmartBot - профессиональный HR-аналитик, который помогает работодателям оценивать кандидатов."},
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=2000,
-                temperature=0.7
-            )
-            
-            return response.choices[0].message.content
-            
-        except Exception as e:
-            print(f"OpenAI API error: {e}")
-            raise e
+        """Call OpenAI API for analysis with retry mechanism"""
+        import logging
+        from openai import AsyncOpenAI
+        
+        logger = logging.getLogger(__name__)
+        max_retries = 3
+        
+        client = AsyncOpenAI(api_key=settings.openai_api_key)
+        
+        for attempt in range(max_retries):
+            try:
+                response = await client.chat.completions.create(
+                    model="gpt-4",
+                    messages=[
+                        {"role": "system", "content": "Ты SmartBot - профессиональный HR-аналитик, который помогает работодателям оценивать кандидатов."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    max_tokens=2000,
+                    temperature=0.7
+                )
+                
+                return response.choices[0].message.content
+                
+            except Exception as e:
+                logger.warning(f"OpenAI API error (attempt {attempt + 1}/{max_retries}): {e}")
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(2 ** attempt)  # Exponential backoff
+                    continue
+                raise e
+        
+        # If all retries failed, fallback to demo analysis
+        logger.error("All OpenAI retry attempts failed, using fallback analysis")
+        raise Exception("OpenAI API unavailable after retries")
     
     def _parse_analysis_response(self, response: str) -> Dict[str, Any]:
-        """Parse OpenAI response and structure the result"""
+        """Parse OpenAI response and structure the result with improved error handling"""
+        logger = logging.getLogger(__name__)
+        
         try:
             # Try to extract JSON from response
             json_start = response.find('{')
@@ -338,8 +376,8 @@ class ApplicationAnalyzer:
                 json_str = response[json_start:json_end]
                 analysis = json.loads(json_str)
                 
-                # Validate and structure the response
-                return {
+                # Validate required fields and provide defaults
+                result = {
                     "initial_score": analysis.get("initial_score", 50),
                     "discrepancies": analysis.get("discrepancies", []),
                     "questions": analysis.get("questions", []),
@@ -347,11 +385,29 @@ class ApplicationAnalyzer:
                     "concerns": analysis.get("concerns", []),
                     "recommendation": analysis.get("recommendation", "consider")
                 }
+                
+                # Validate score range
+                if not isinstance(result["initial_score"], (int, float)) or not (0 <= result["initial_score"] <= 100):
+                    logger.warning(f"Invalid initial_score: {result['initial_score']}, using default 50")
+                    result["initial_score"] = 50
+                
+                # Validate recommendation values
+                valid_recommendations = ["recommend", "consider", "reject"]
+                if result["recommendation"] not in valid_recommendations:
+                    logger.warning(f"Invalid recommendation: {result['recommendation']}, using 'consider'")
+                    result["recommendation"] = "consider"
+                
+                return result
             else:
-                raise ValueError("No valid JSON found in response")
+                logger.error("No valid JSON found in OpenAI response")
+                return self._get_demo_analysis()
                 
         except json.JSONDecodeError as e:
-            print(f"JSON parsing error: {e}")
+            logger.error(f"JSON parsing error: {e}")
+            logger.debug(f"Failed to parse response: {response[:200]}...")
+            return self._get_demo_analysis()
+        except Exception as e:
+            logger.error(f"Unexpected error parsing analysis response: {e}")
             return self._get_demo_analysis()
     
     def _get_demo_analysis(self) -> Dict[str, Any]:
@@ -408,8 +464,8 @@ class ApplicationAnalyzer:
         
         # Prepare conversation for analysis
         conversation_text = "\n".join([
-            f"{msg.message_type.value}: {msg.content}" 
-            for msg in messages
+            f"{getattr(msg.message_type, 'value', msg.message_type)}: {msg.content}" 
+            for msg in messages if msg.message_type and msg.content
         ])
         
         prompt = f"""
@@ -432,7 +488,10 @@ class ApplicationAnalyzer:
 """
         
         try:
-            response = await openai.ChatCompletion.acreate(
+            from openai import AsyncOpenAI
+            client = AsyncOpenAI(api_key=settings.openai_api_key)
+            
+            response = await client.chat.completions.create(
                 model="gpt-4",
                 messages=[
                     {"role": "system", "content": "Ты SmartBot - создаешь финальные отчеты для работодателей."},
@@ -450,15 +509,35 @@ class ApplicationAnalyzer:
             
             if json_start != -1 and json_end != -1:
                 json_str = result[json_start:json_end]
-                return json.loads(json_str)
+                parsed_result = json.loads(json_str)
+                return parsed_result
             
         except Exception as e:
-            print(f"Error in final analysis: {e}")
+            logging.error(f"Error in final analysis: {e}")
+            # Continue to fallback analysis
         
         # Fallback analysis
+        fallback_score = analysis.initial_score if analysis else 50
+        
+        # Simple analysis based on conversation length and content
+        answer_count = len([
+            msg for msg in messages 
+            if msg.message_type == SmartBotMessageType.ANSWER
+        ])
+        
+        if answer_count == 0:
+            summary = "Кандидат не предоставил информацию о своих навыках, которые могут быть релевантны для этой позиции."
+            final_score = 0.0
+        elif answer_count < 3:
+            summary = "Кандидат предоставил ограниченную информацию. Требуется дополнительная проверка."
+            final_score = max(fallback_score - 20, 30)
+        else:
+            summary = "Кандидат прошел собеседование с ботом. Анализ завершен."
+            final_score = fallback_score
+        
         return {
-            "final_score": analysis.initial_score if analysis else 75,
-            "summary": "Кандидат прошел собеседование с ботом. Требуется дополнительная проверка.",
+            "final_score": final_score,
+            "summary": summary,
             "recommendation": "consider"
         }
 

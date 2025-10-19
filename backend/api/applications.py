@@ -8,6 +8,7 @@ from models.jobs import Job
 from models.resumes import Resume
 from models.applications import JobApplication
 from schemas.applications import ApplicationCreate, ApplicationUpdate, ApplicationResponse, ApplicationWithDetailsResponse
+from services.application_analyzer import application_analyzer
 
 router = APIRouter(prefix="/applications", tags=["applications"])
 
@@ -98,7 +99,7 @@ def get_application(
 
 
 @router.post("/", response_model=ApplicationResponse)
-def create_application(
+async def create_application(
     application_data: ApplicationCreate,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
@@ -146,6 +147,13 @@ def create_application(
     db.add(db_application)
     db.commit()
     db.refresh(db_application)
+    
+    # Start SmartBot analysis session automatically after application creation
+    try:
+        await application_analyzer.start_analysis_session(db, db_application)
+    except Exception as e:
+        # Log error but don't fail the application creation
+        print(f"Failed to start SmartBot analysis: {e}")
     
     return db_application
 

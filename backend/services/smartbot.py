@@ -1,5 +1,4 @@
 import uuid
-import openai
 from typing import Optional, List
 from sqlalchemy.orm import Session
 from core.config import settings
@@ -9,9 +8,7 @@ from schemas.chat import ChatResponse
 
 class SmartBotService:
     def __init__(self):
-        self.openai_available = bool(settings.openai_api_key)
-        if self.openai_available:
-            openai.api_key = settings.openai_api_key
+        pass
     
     def get_or_create_session(self, db: Session, session_id: Optional[str] = None, user_id: Optional[int] = None) -> AIChatSession:
         if session_id:
@@ -57,7 +54,13 @@ class SmartBotService:
     
     async def get_openai_response(self, messages: List[dict]) -> str:
         """Get response from OpenAI API"""
+        if not settings.openai_api_key:
+            return self.get_demo_response(messages[-1].get("content", ""))
+        
         try:
+            from openai import AsyncOpenAI
+            client = AsyncOpenAI(api_key=settings.openai_api_key)
+            
             system_message = {
                 "role": "system",
                 "content": """Вы SmartBot - умный помощник по поиску работы и карьерному развитию. 
@@ -74,7 +77,7 @@ class SmartBotService:
             
             full_messages = [system_message] + messages
             
-            response = await openai.ChatCompletion.acreate(
+            response = await client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=full_messages,
                 max_tokens=500,

@@ -83,8 +83,10 @@ class AnalysisCategoryResponse(BaseModel):
 
 class CandidateAnalysisResponse(BaseModel):
     id: int
-    smartbot_session_id: int
+    session_id: str
     relevance_score: Optional[float] = None
+    initial_score: Optional[float] = None
+    final_score: Optional[float] = None
     status: str
     strengths: Optional[List[str]] = None
     weaknesses: Optional[List[str]] = None
@@ -104,15 +106,14 @@ class CandidateAnalysisResponse(BaseModel):
 
 
 class SmartBotChatRequest(BaseModel):
-    session_id: int
+    session_id: str
     message: str
 
 
 class SmartBotChatResponse(BaseModel):
-    session_id: int
-    bot_message: str
-    analysis_complete: bool = False
-    next_question: Optional[str] = None
+    message: str
+    session_status: str
+    is_completed: bool = False
 
 
 class SmartBotInitRequest(BaseModel):
@@ -120,8 +121,10 @@ class SmartBotInitRequest(BaseModel):
 
 
 class SmartBotInitResponse(BaseModel):
-    session_id: int
+    session_id: str
     initial_message: str
+    status: Optional[str] = None
+    is_completed: bool = False
     questions_to_ask: List[str] = []
 
 
@@ -129,11 +132,15 @@ class EmployerAnalysisView(BaseModel):
     """Comprehensive view for employers to see candidate analysis"""
     application_id: int
     candidate_name: str
-    job_title: str
+    candidate_email: Optional[str] = None
+    session_id: str
+    session_status: str
     relevance_score: Optional[float] = None
     recommendation: Optional[str] = None
     summary: Optional[str] = None
-    chat_completed: bool = False
-    key_insights: List[str] = []
+    strengths: List[str] = []
     concerns: List[str] = []
-    created_at: datetime
+    chat_messages: List[Dict[str, Any]] = []
+    categories: List[Dict[str, Any]] = []
+    applied_at: datetime
+    analyzed_at: Optional[datetime] = None

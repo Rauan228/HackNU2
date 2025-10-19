@@ -40,28 +40,62 @@ const SmartBotWidget: React.FC<SmartBotWidgetProps> = ({ applicationId, onClose,
   const startAnalysis = async () => {
     try {
       setIsLoading(true);
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setMessages([{
+          id: Date.now().toString(),
+          role: 'ASSISTANT' as const,
+          content: 'Вы не авторизованы. Войдите, чтобы использовать SmartBot.',
+          created_at: new Date().toISOString()
+        }]);
+        setIsLoading(false);
+        return;
+      }
+
       const response = await fetch('http://localhost:8000/api/smartbot/start-analysis', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ application_id: applicationId })
       });
 
       if (!response.ok) {
-        throw new Error('Failed to start analysis');
+        let detail = '';
+        try {
+          const ct = response.headers.get('content-type') || '';
+          if (ct.includes('application/json')) {
+            const err = await response.json();
+            detail = (err && (err.detail || err.message)) ? (err.detail || err.message) : JSON.stringify(err);
+          } else {
+            detail = await response.text();
+          }
+        } catch (_) {}
+        throw new Error(`Failed to start analysis: ${response.status} ${detail}`);
       }
 
       const data = await response.json();
       setSessionId(data.session_id);
-      setMessages(data.messages || []);
+      
+      // Add initial message if provided
+      if (data.initial_message) {
+        const initialMessage: Message = {
+          id: Date.now().toString(),
+          role: 'ASSISTANT' as const,
+          content: data.initial_message,
+          created_at: new Date().toISOString()
+        };
+        setMessages([initialMessage]);
+      }
+      
+      setIsCompleted(data.is_completed || false);
     } catch (error) {
       console.error('Error starting analysis:', error);
       setMessages([{
         id: Date.now().toString(),
         role: 'ASSISTANT' as const,
-        content: 'Извините, произошла ошибка при запуске анализа. Попробуйте позже.',
+        content: error instanceof Error ? error.message : 'Извините, произошла ошибка при запуске анализа. Попробуйте позже.',
         created_at: new Date().toISOString()
       }]);
     } finally {
@@ -84,11 +118,24 @@ const SmartBotWidget: React.FC<SmartBotWidgetProps> = ({ applicationId, onClose,
     setIsLoading(true);
 
     try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        const errorMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'ASSISTANT' as const,
+          content: 'Вы не авторизованы. Войдите, чтобы продолжить.',
+          created_at: new Date().toISOString()
+        };
+        setMessages(prev => [...prev, errorMessage]);
+        setIsLoading(false);
+        return;
+      }
+
       const response = await fetch('http://localhost:8000/api/smartbot/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           session_id: sessionId,
@@ -97,7 +144,17 @@ const SmartBotWidget: React.FC<SmartBotWidgetProps> = ({ applicationId, onClose,
       });
 
       if (!response.ok) {
-        throw new Error('Failed to send message');
+        let detail = '';
+        try {
+          const ct = response.headers.get('content-type') || '';
+          if (ct.includes('application/json')) {
+            const err = await response.json();
+            detail = (err && (err.detail || err.message)) ? (err.detail || err.message) : JSON.stringify(err);
+          } else {
+            detail = await response.text();
+          }
+        } catch (_) {}
+        throw new Error(`Failed to send message: ${response.status} ${detail}`);
       }
 
       const data = await response.json();
@@ -105,7 +162,7 @@ const SmartBotWidget: React.FC<SmartBotWidgetProps> = ({ applicationId, onClose,
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'ASSISTANT' as const,
-        content: data.response,
+        content: data.message,
         created_at: new Date().toISOString()
       };
 
@@ -119,7 +176,7 @@ const SmartBotWidget: React.FC<SmartBotWidgetProps> = ({ applicationId, onClose,
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'ASSISTANT' as const,
-        content: 'Извините, произошла ошибка. Попробуйте еще раз.',
+        content: error instanceof Error ? error.message : 'Извините, произошла ошибка. Попробуйте еще раз.',
         created_at: new Date().toISOString()
       };
       setMessages(prev => [...prev, errorMessage]);

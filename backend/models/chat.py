@@ -42,12 +42,17 @@ class SmartBotSessionStatus(str, enum.Enum):
     ACTIVE = "active"
     COMPLETED = "completed"
     ABANDONED = "abandoned"
+    ERROR = "error"
 
 
 class SmartBotMessageType(str, enum.Enum):
     BOT = "bot"
     USER = "user"
     SYSTEM = "system"
+    QUESTION = "question"
+    INFO = "info"
+    ANSWER = "answer"
+    COMPLETION = "completion"
 
 
 class AnalysisStatus(str, enum.Enum):
@@ -62,6 +67,7 @@ class SmartBotSession(Base):
     __tablename__ = "smartbot_sessions"
 
     id = Column(Integer, primary_key=True, index=True)
+    session_id = Column(String(255), unique=True, nullable=False, index=True)
     application_id = Column(Integer, ForeignKey("job_applications.id"), nullable=False, unique=True)
     status = Column(String(20), nullable=False, default=SmartBotSessionStatus.ACTIVE.value)
     started_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -78,8 +84,8 @@ class SmartBotMessage(Base):
     __tablename__ = "smartbot_messages"
 
     id = Column(Integer, primary_key=True, index=True)
-    session_id = Column(Integer, ForeignKey("smartbot_sessions.id"), nullable=False)
-    message_type = Column(String(20), nullable=False)  # bot, user, system
+    session_id = Column(String(255), ForeignKey("smartbot_sessions.session_id"), nullable=False)
+    message_type = Column(Enum(SmartBotMessageType, values_callable=lambda obj: [e.value for e in obj], native_enum=False), nullable=False)  # bot, user, system, question, info, answer, completion
     content = Column(Text, nullable=False)
     message_metadata = Column(JSON, nullable=True)  # Question type, analysis context, etc.
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -93,10 +99,12 @@ class CandidateAnalysis(Base):
     __tablename__ = "candidate_analyses"
 
     id = Column(Integer, primary_key=True, index=True)
-    smartbot_session_id = Column(Integer, ForeignKey("smartbot_sessions.id"), nullable=False, unique=True)
+    session_id = Column(String(255), ForeignKey("smartbot_sessions.session_id"), nullable=False, unique=True)
     
     # Analysis results
-    relevance_score = Column(Float, nullable=True)  # 0-100 percentage
+    relevance_score = Column(Float, nullable=True)  # 0-100 percentage (final score)
+    initial_score = Column(Float, nullable=True)  # 0-100 percentage (initial assessment)
+    final_score = Column(Float, nullable=True)  # 0-100 percentage (after clarifications)
     status = Column(String(20), nullable=False, default=AnalysisStatus.PENDING.value)
     
     # Detailed analysis

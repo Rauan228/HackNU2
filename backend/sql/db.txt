@@ -1,0 +1,85 @@
+СТРУКТУРА БАЗЫ ДАННЫХ (из выгрузки CSV)
+
+public.ai_chat_messages
+-----------------------
+  1. id  integer  NOT NULL
+  2. session_id  integer  NOT NULL
+  3. role  character varying(16)  NOT NULL
+  4. content  text  NOT NULL
+  5. created_at  timestamp with time zone  NULL
+
+public.ai_chat_sessions
+-----------------------
+  1. id  integer  NOT NULL
+  2. application_id  integer  NOT NULL
+  3. lang  character varying(2)  NOT NULL
+  4. model  character varying(64)  NOT NULL
+  5. started_at  timestamp with time zone  NULL
+  6. completed_at  timestamp with time zone  NULL
+  7. is_completed  boolean  NOT NULL
+  8. relevance_score  numeric(5,2)  NULL
+  9. summary_text  text  NULL
+ 10. reasons_json  jsonb  NULL
+ 11. transcript_cache  text  NULL
+ 12. created_at  timestamp with time zone  NULL
+ 13. updated_at  timestamp with time zone  NULL
+
+public.job_applications
+-----------------------
+  1. id  integer  NOT NULL
+  2. user_id  integer  NOT NULL
+  3. job_id  integer  NOT NULL
+  4. resume_id  integer  NULL
+  5. cover_letter  text  NULL
+  6. status  character varying(20)  NOT NULL
+  7. created_at  timestamp with time zone  NULL
+  8. updated_at  timestamp with time zone  NULL
+
+public.jobs
+-----------
+  1. id  integer  NOT NULL
+  2. employer_id  integer  NOT NULL
+  3. title  character varying(255)  NOT NULL
+  4. description  text  NOT NULL
+  5. requirements  text  NULL
+  6. location  character varying(255)  NULL
+  7. employment_type  character varying(20)  NULL
+  8. experience_level  character varying(20)  NULL
+  9. salary_min  numeric(12,2)  NULL
+ 10. salary_max  numeric(12,2)  NULL
+ 11. salary_currency  character varying(10)  NULL
+ 12. remote_work  boolean  NULL
+ 13. is_active  boolean  NULL
+ 14. created_at  timestamp with time zone  NULL
+ 15. updated_at  timestamp with time zone  NULL
+ 16. company_name  character varying(255)  NOT NULL
+
+public.resumes
+--------------
+  1. id  integer  NOT NULL
+  2. user_id  integer  NOT NULL
+  3. title  character varying(255)  NOT NULL
+  4. summary  text  NULL
+  5. experience  text  NULL
+  6. education  text  NULL
+  7. skills  text  NULL
+  8. languages  text  NULL
+  9. portfolio_url  character varying(500)  NULL
+ 10. desired_position  character varying(255)  NULL
+ 11. desired_salary  numeric(15,2)  NULL
+ 12. location  character varying(255)  NULL
+ 13. is_public  boolean  NULL
+ 14. created_at  timestamp with time zone  NULL
+ 15. updated_at  timestamp with time zone  NULL
+
+public.users
+------------
+  1. id  integer  NOT NULL
+  2. email  character varying(255)  NOT NULL
+  3. hashed_password  character varying(255)  NOT NULL
+  4. full_name  character varying(255)  NOT NULL
+  5. phone  character varying(50)  NULL
+  6. user_type  character varying(20)  NOT NULL
+  7. is_active  boolean  NULL
+  8. created_at  timestamp with time zone  NULL
+  9. updated_at  timestamp with time zone  NULL

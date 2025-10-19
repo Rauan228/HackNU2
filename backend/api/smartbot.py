@@ -15,7 +15,7 @@ from services.application_analyzer import application_analyzer
 from core.deps import get_current_active_user
 import json
 
-router = APIRouter(prefix="/api/smartbot", tags=["SmartBot"])
+router = APIRouter(prefix="/smartbot", tags=["SmartBot"])
 
 
 @router.post("/start-analysis", response_model=SmartBotInitResponse)
@@ -52,9 +52,9 @@ async def start_analysis(
         
         return SmartBotInitResponse(
             session_id=existing_session.session_id,
-            status=existing_session.status.value,
+            status=existing_session.status,
             initial_message=messages[0].content if messages else "Добро пожаловать в SmartBot!",
-            is_completed=existing_session.status.value == "completed"
+            is_completed=existing_session.status == "completed"
         )
     
     try:
@@ -67,13 +67,16 @@ async def start_analysis(
         ).order_by(SmartBotMessage.created_at).first()
         
         return SmartBotInitResponse(
-            session_id=session.session_id,
-            status=session.status.value,
-            initial_message=initial_message.content if initial_message else "Добро пожаловать в SmartBot!",
-            is_completed=False
-        )
+        session_id=session.session_id,
+        status=session.status,
+        initial_message=initial_message.content if initial_message else "Добро пожаловать в SmartBot!",
+        is_completed=session.status == "completed"
+    )
         
     except Exception as e:
+        import traceback
+        print(f"ERROR in start_analysis: {str(e)}")
+        print(f"ERROR traceback: {traceback.format_exc()}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to start analysis: {str(e)}"
@@ -176,11 +179,11 @@ async def get_session(
     return SmartBotSessionResponse(
         session_id=session.session_id,
         application_id=session.application_id,
-        status=session.status.value,
+        status=session.status,
         messages=[
             {
                 "id": msg.id,
-                "type": msg.message_type.value,
+                "type": msg.message_type,
                 "content": msg.content,
                 "created_at": msg.created_at
             }
@@ -190,7 +193,7 @@ async def get_session(
             "initial_score": analysis.initial_score if analysis else None,
             "final_score": analysis.final_score if analysis else None,
             "summary": analysis.summary if analysis else None,
-            "status": analysis.status.value if analysis else None
+            "status": analysis.status if analysis else None
         } if analysis else None,
         created_at=session.created_at,
         updated_at=session.updated_at
@@ -257,9 +260,9 @@ async def get_employer_analysis(
             candidate_name=f"{user.first_name} {user.last_name}" if user else "Unknown",
             candidate_email=user.email if user else "",
             session_id=session.session_id,
-            session_status=session.status.value,
+            session_status=session.status,
             relevance_score=analysis.final_score or analysis.initial_score if analysis else 0,
-            recommendation=self._get_recommendation_from_score(
+            recommendation=_get_recommendation_from_score(
                 analysis.final_score or analysis.initial_score if analysis else 0
             ),
             summary=analysis.summary if analysis else "Анализ не завершен",
@@ -267,7 +270,7 @@ async def get_employer_analysis(
             concerns=json.loads(analysis.weaknesses) if analysis and analysis.weaknesses else [],
             chat_messages=[
                 {
-                    "type": msg.message_type.value,
+                    "type": msg.message_type,
                     "content": msg.content,
                     "created_at": msg.created_at
                 }
@@ -275,7 +278,7 @@ async def get_employer_analysis(
             ],
             categories=[
                 {
-                    "name": cat.category_name,
+                    "name": cat.category,
                     "status": cat.status,
                     "score": cat.score,
                     "details": cat.details
@@ -357,9 +360,9 @@ async def get_single_analysis(
         candidate_name=f"{user.first_name} {user.last_name}" if user else "Unknown",
         candidate_email=user.email if user else "",
         session_id=session.session_id,
-        session_status=session.status.value,
+        session_status=session.status,
         relevance_score=analysis.final_score or analysis.initial_score if analysis else 0,
-        recommendation=self._get_recommendation_from_score(
+        recommendation=_get_recommendation_from_score(
             analysis.final_score or analysis.initial_score if analysis else 0
         ),
         summary=analysis.summary if analysis else "Анализ не завершен",
@@ -367,7 +370,7 @@ async def get_single_analysis(
         concerns=json.loads(analysis.weaknesses) if analysis and analysis.weaknesses else [],
         chat_messages=[
             {
-                "type": msg.message_type.value,
+                "type": msg.message_type,
                 "content": msg.content,
                 "created_at": msg.created_at
             }
@@ -375,7 +378,7 @@ async def get_single_analysis(
         ],
         categories=[
             {
-                "name": cat.category_name,
+                "name": cat.category,
                 "status": cat.status,
                 "score": cat.score,
                 "details": cat.details

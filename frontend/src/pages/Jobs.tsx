@@ -5,6 +5,7 @@ import { type Job } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { JobCard } from '../components/job/JobCard';
 import { Search, MapPin, Plus } from 'lucide-react';
+import SmartBotWidget from '../components/SmartBotWidget';
 
 const Jobs: React.FC = () => {
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -14,6 +15,8 @@ const Jobs: React.FC = () => {
   const [locationFilter, setLocationFilter] = useState('');
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [showSmartBot, setShowSmartBot] = useState(false);
+  const [smartBotApplicationId, setSmartBotApplicationId] = useState<number | null>(null);
   
   const { isEmployer } = useAuth();
   const navigate = useNavigate();
@@ -80,8 +83,14 @@ const Jobs: React.FC = () => {
         cover_letter: "Заинтересован в данной позиции. Готов обсудить детали."
       };
       
-      await applicationsAPI.createApplication(applicationData);
+      const response = await applicationsAPI.createApplication(applicationData);
       console.log('Отклик успешно отправлен на вакансию:', jobId);
+      
+      // Открываем SmartBot виджет с ID заявки
+      if (response.data && response.data.id) {
+        setSmartBotApplicationId(response.data.id);
+        setShowSmartBot(true);
+      }
       
       // Обновляем список вакансий чтобы показать что отклик отправлен
       fetchJobs(1, true);
@@ -208,6 +217,19 @@ const Jobs: React.FC = () => {
           <p className="text-gray-400 mt-2">Попробуйте изменить параметры поиска</p>
         </div>
       )}
+
+      {/* SmartBot Widget */}
+    {showSmartBot && smartBotApplicationId && (
+      <SmartBotWidget
+        applicationId={smartBotApplicationId}
+        isMinimized={false}
+        onToggleMinimize={() => setShowSmartBot(!showSmartBot)}
+        onClose={() => {
+          setShowSmartBot(false);
+          setSmartBotApplicationId(null);
+        }}
+      />
+    )}
     </div>
   );
 };
