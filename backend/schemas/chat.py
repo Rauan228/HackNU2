@@ -5,7 +5,8 @@ from models.chat import MessageRole, SmartBotMessageType, SmartBotSessionStatus,
 
 
 class ChatMessageCreate(BaseModel):
-    content: str
+    message: str
+    session_id: Optional[str] = None
 
 
 class ChatMessageResponse(BaseModel):
@@ -44,7 +45,7 @@ class SmartBotMessageCreate(BaseModel):
 
 class SmartBotMessageResponse(BaseModel):
     id: int
-    message_type: str
+    message_type: SmartBotMessageType
     content: str
     metadata: Optional[Dict[str, Any]] = None
     created_at: datetime

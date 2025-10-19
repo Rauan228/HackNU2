@@ -183,7 +183,7 @@ async def get_session(
         messages=[
             {
                 "id": msg.id,
-                "type": msg.message_type,
+                "type": msg.message_type.value if hasattr(msg.message_type, 'value') else msg.message_type,
                 "content": msg.content,
                 "created_at": msg.created_at
             }
@@ -270,7 +270,7 @@ async def get_employer_analysis(
             concerns=json.loads(analysis.weaknesses) if analysis and analysis.weaknesses else [],
             chat_messages=[
                 {
-                    "type": msg.message_type,
+                    "type": msg.message_type.value if hasattr(msg.message_type, 'value') else msg.message_type,
                     "content": msg.content,
                     "created_at": msg.created_at
                 }
@@ -370,7 +370,7 @@ async def get_single_analysis(
         concerns=json.loads(analysis.weaknesses) if analysis and analysis.weaknesses else [],
         chat_messages=[
             {
-                "type": msg.message_type,
+                "type": msg.message_type.value if hasattr(msg.message_type, 'value') else msg.message_type,
                 "content": msg.content,
                 "created_at": msg.created_at
             }

@@ -14,7 +14,6 @@ router = APIRouter(prefix="/chat", tags=["smartbot"])
 @router.post("/", response_model=ChatResponse)
 async def send_message(
     message_data: ChatMessageCreate,
-    session_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_current_user)
 ):
@@ -23,8 +22,8 @@ async def send_message(
     
     response = await smartbot_service.chat(
         db=db,
-        message=message_data.content,
-        session_id=session_id,
+        message=message_data.message,
+        session_id=message_data.session_id,
         user_id=user_id
     )
     

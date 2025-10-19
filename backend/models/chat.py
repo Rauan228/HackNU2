@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Enum, Float, Boolean, JSON
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Enum, Float, Boolean
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 import enum
@@ -74,7 +75,7 @@ class SmartBotSession(Base):
     completed_at = Column(DateTime(timezone=True), nullable=True)
     
     # Relationships
-    application = relationship("JobApplication", back_populates="smartbot_session")
+    application = relationship("models.applications.JobApplication", back_populates="smartbot_session", lazy="select")
     messages = relationship("SmartBotMessage", back_populates="session", cascade="all, delete-orphan")
     analysis = relationship("CandidateAnalysis", back_populates="smartbot_session", uselist=False)
 
@@ -85,9 +86,9 @@ class SmartBotMessage(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     session_id = Column(String(255), ForeignKey("smartbot_sessions.session_id"), nullable=False)
-    message_type = Column(Enum(SmartBotMessageType, values_callable=lambda obj: [e.value for e in obj], native_enum=False), nullable=False)  # bot, user, system, question, info, answer, completion
+    message_type = Column(String(50), nullable=False)  # bot, user, system, question, info, answer, completion
     content = Column(Text, nullable=False)
-    message_metadata = Column(JSON, nullable=True)  # Question type, analysis context, etc.
+    message_metadata = Column(JSONB, nullable=True)  # Question type, analysis context, etc.
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relationships
@@ -108,10 +109,10 @@ class CandidateAnalysis(Base):
     status = Column(String(20), nullable=False, default=AnalysisStatus.PENDING.value)
     
     # Detailed analysis
-    strengths = Column(JSON, nullable=True)  # List of candidate strengths
-    weaknesses = Column(JSON, nullable=True)  # List of areas of concern
-    missing_requirements = Column(JSON, nullable=True)  # Requirements not met
-    clarifications_received = Column(JSON, nullable=True)  # Answers from candidate
+    strengths = Column(JSONB, nullable=True)  # List of candidate strengths
+    weaknesses = Column(JSONB, nullable=True)  # List of areas of concern
+    missing_requirements = Column(JSONB, nullable=True)  # Requirements not met
+    clarifications_received = Column(JSONB, nullable=True)  # Answers from candidate
     
     # Summary for employer
     summary = Column(Text, nullable=True)  # Human-readable summary

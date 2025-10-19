@@ -1,9 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { type ChatMessage, chatAPI } from '../services/api';
+import { type ChatMessage, chatAPI, smartBotAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { MessageCircle, X, Send, Bot, User } from 'lucide-react';
 
-const ChatWidget: React.FC = () => {
+interface ChatWidgetProps {
+  applicationId?: string;
+  isSmartBot?: boolean;
+}
+
+const ChatWidget: React.FC<ChatWidgetProps> = ({ applicationId, isSmartBot = false }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
@@ -38,21 +43,53 @@ const ChatWidget: React.FC = () => {
     setMessages(prev => [...prev, newUserMessage]);
 
     try {
-      const response = await chatAPI.sendMessage({
-        message: userMessage,
-        session_id: sessionId || undefined
-      });
-
-      // Update session ID if it's a new session
-      if (!sessionId && response.data.session_id) {
-        setSessionId(response.data.session_id);
+      let response;
+      let aiMessageContent: string;
+      
+      if (isSmartBot && applicationId) {
+        if (!sessionId) {
+          // Start SmartBot analysis first if no session exists
+          const startResponse = await smartBotAPI.startAnalysis({
+            application_id: parseInt(applicationId)
+          });
+          setSessionId(startResponse.data.session_id);
+          
+          // Send the user message after starting analysis
+          response = await smartBotAPI.sendMessage({
+            session_id: startResponse.data.session_id,
+            message: userMessage
+          });
+        } else {
+          // Use existing session
+          response = await smartBotAPI.sendMessage({
+            session_id: sessionId,
+            message: userMessage
+          });
+        }
+        
+        // SmartBot API returns message in response.data.message
+        aiMessageContent = response.data.message;
+      } else {
+        // Use regular chat API
+        response = await chatAPI.sendMessage({
+          message: userMessage,
+          session_id: sessionId || undefined
+        });
+        
+        // Update session ID if it's a new session (only for regular chat)
+        if (!sessionId && 'session_id' in response.data && response.data.session_id) {
+          setSessionId(response.data.session_id);
+        }
+        
+        // Regular chat API returns message in response.data.message
+        aiMessageContent = response.data.message;
       }
 
       // Add AI response to chat
       const aiMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'ASSISTANT',
-        content: response.data.response,
+        content: aiMessageContent,
         created_at: new Date().toISOString()
       };
       setMessages(prev => [...prev, aiMessage]);
@@ -85,8 +122,8 @@ const ChatWidget: React.FC = () => {
     });
   };
 
-  // Не показываем чат для работодателей
-  if (!user || user.user_type === 'employer') {
+  // Prevent employers from using regular chat, but allow SmartBot for employers
+  if (!user || (!isSmartBot && user.user_type === 'employer')) {
     return null;
   }
 
@@ -111,7 +148,7 @@ const ChatWidget: React.FC = () => {
           <div className="bg-blue-600 text-white p-4 rounded-t-lg flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <Bot className="h-5 w-5" />
-              <span className="font-medium">SmartBot</span>
+              <span className="font-medium">Помощник по поиску работы</span>
             </div>
             <button
               onClick={() => setIsOpen(false)}
@@ -127,9 +164,9 @@ const ChatWidget: React.FC = () => {
               <div className="text-center text-gray-500 py-8">
                 <Bot className="h-12 w-12 mx-auto mb-2 text-gray-300" />
                 <p className="text-sm">
-                  Привет! Я SmartBot, ваш помощник по поиску работы.
+                  Привет! Я ваш помощник по поиску работы.
                   <br />
-                  Задайте мне любой вопрос!
+                  Могу помочь с вопросами о карьере, резюме и поиске вакансий!
                 </p>
               </div>
             )}

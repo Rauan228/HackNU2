@@ -207,13 +207,63 @@ export const applicationsAPI = {
 };
 
 // Chat API
+// SmartBot interfaces
+export interface SmartBotMessage {
+  id: string;
+  role: 'USER' | 'ASSISTANT' | 'SYSTEM';
+  content: string;
+  created_at: string;
+}
+
+export interface SmartBotSession {
+  id: number;
+  session_id: string;
+  application_id: number;
+  status: 'active' | 'completed' | 'paused';
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CandidateAnalysis {
+  id: number;
+  application_id: number;
+  overall_score: number;
+  summary: string;
+  strengths: string[];
+  weaknesses: string[];
+  recommendations: string[];
+  created_at: string;
+}
+
 export const chatAPI = {
   sendMessage: (data: { message: string; session_id?: string }) =>
-    api.post<{ response: string; session_id: string }>('/chat/', data),
+    api.post<{ message: string; session_id: string }>('/chat/', data),
 
   getSession: (sessionId: string) => api.get<ChatSession>(`/chat/sessions/${sessionId}`),
 
   getSessions: () => api.get<ChatSession[]>('/chat/sessions'),
+};
+
+export const smartBotAPI = {
+  startAnalysis: (data: { application_id: number }) =>
+    api.post<{
+      session_id: string;
+      initial_message?: string;
+      is_completed: boolean;
+    }>('/smartbot/start-analysis', data),
+
+  sendMessage: (data: { session_id: string; message: string }) =>
+    api.post<{
+      message: string;
+      is_completed: boolean;
+      analysis?: CandidateAnalysis;
+    }>('/smartbot/chat', data),
+
+  getSession: (sessionId: string) => api.get<SmartBotSession>(`/smartbot/sessions/${sessionId}`),
+
+  getAnalysis: (applicationId: number) => api.get<CandidateAnalysis>(`/smartbot/analysis/${applicationId}`),
+
+  getSessionMessages: (sessionId: string) => api.get<SmartBotMessage[]>(`/smartbot/sessions/${sessionId}/messages`),
 };
 
 export default api;

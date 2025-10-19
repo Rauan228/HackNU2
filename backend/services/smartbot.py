@@ -8,7 +8,7 @@ from schemas.chat import ChatResponse
 
 class SmartBotService:
     def __init__(self):
-        pass
+        self.openai_available = bool(settings.openai_api_key)
     
     def get_or_create_session(self, db: Session, session_id: Optional[str] = None, user_id: Optional[int] = None) -> AIChatSession:
         if session_id:

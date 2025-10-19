@@ -83,7 +83,7 @@ class ApplicationAnalyzer:
                 
                 bot_message = SmartBotMessage(
                     session_id=session.session_id,
-                    message_type=SmartBotMessageType.QUESTION,
+                    message_type=SmartBotMessageType.QUESTION.value,
                     content=welcome_message,
                     message_metadata=json.dumps({
                         "question_category": first_question.get("category"),
@@ -99,7 +99,7 @@ class ApplicationAnalyzer:
                 
                 bot_message = SmartBotMessage(
                     session_id=session.session_id,
-                    message_type=SmartBotMessageType.INFO,
+                    message_type=SmartBotMessageType.INFO.value,
                     content=welcome_message,
                     message_metadata=None
                 )
@@ -125,7 +125,7 @@ class ApplicationAnalyzer:
         # Save user message
         user_msg = SmartBotMessage(
             session_id=session_id,
-            message_type=SmartBotMessageType.ANSWER,
+            message_type=SmartBotMessageType.ANSWER.value,
             content=user_message,
             message_metadata=None
         )
@@ -139,7 +139,7 @@ class ApplicationAnalyzer:
         # Get last bot message to check for remaining questions
         last_bot_message = None
         for msg in reversed(messages):
-            if msg.message_type == SmartBotMessageType.QUESTION:
+            if msg.message_type == SmartBotMessageType.QUESTION.value:
                 last_bot_message = msg
                 break
         
@@ -189,7 +189,7 @@ class ApplicationAnalyzer:
 
         bot_message = SmartBotMessage(
             session_id=session_id,
-            message_type=SmartBotMessageType.COMPLETION,
+            message_type=SmartBotMessageType.COMPLETION.value,
             content=bot_response,
             message_metadata=None
         )
@@ -464,7 +464,7 @@ class ApplicationAnalyzer:
         
         # Prepare conversation for analysis
         conversation_text = "\n".join([
-            f"{getattr(msg.message_type, 'value', msg.message_type)}: {msg.content}" 
+            f"{msg.message_type}: {msg.content}" 
             for msg in messages if msg.message_type and msg.content
         ])
         
@@ -522,7 +522,7 @@ class ApplicationAnalyzer:
         # Simple analysis based on conversation length and content
         answer_count = len([
             msg for msg in messages 
-            if msg.message_type == SmartBotMessageType.ANSWER
+            if msg.message_type == SmartBotMessageType.ANSWER.value
         ])
         
         if answer_count == 0:

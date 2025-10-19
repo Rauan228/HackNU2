@@ -1,12 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bot, X, Minimize2 } from 'lucide-react';
-
-interface Message {
-  id: string;
-  role: 'USER' | 'ASSISTANT' | 'SYSTEM';
-  content: string;
-  created_at: string;
-}
+import { Bot, X, Minimize2, BarChart3, MessageCircle } from 'lucide-react';
+import { smartBotAPI, type SmartBotMessage, type CandidateAnalysis } from '../services/api';
 
 interface SmartBotWidgetProps {
   applicationId: number;
@@ -16,11 +10,13 @@ interface SmartBotWidgetProps {
 }
 
 const SmartBotWidget: React.FC<SmartBotWidgetProps> = ({ applicationId, onClose, isMinimized, onToggleMinimize }) => {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [inputMessage, setInputMessage] = useState<string>('');
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [messages, setMessages] = useState<SmartBotMessage[]>([]);
+  const [inputMessage, setInputMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [isCompleted, setIsCompleted] = useState<boolean>(false);
+  const [isCompleted, setIsCompleted] = useState(false);
+  const [analysis, setAnalysis] = useState<CandidateAnalysis | null>(null);
+  const [showAnalysis, setShowAnalysis] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -38,64 +34,31 @@ const SmartBotWidget: React.FC<SmartBotWidgetProps> = ({ applicationId, onClose,
   }, [applicationId]);
 
   const startAnalysis = async () => {
+    setIsLoading(true);
     try {
-      setIsLoading(true);
-      const token = localStorage.getItem('token');
-      if (!token) {
-        setMessages([{
-          id: Date.now().toString(),
-          role: 'ASSISTANT' as const,
-          content: 'Вы не авторизованы. Войдите, чтобы использовать SmartBot.',
-          created_at: new Date().toISOString()
-        }]);
-        setIsLoading(false);
-        return;
-      }
-
-      const response = await fetch('http://localhost:8000/api/smartbot/start-analysis', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ application_id: applicationId })
-      });
-
-      if (!response.ok) {
-        let detail = '';
-        try {
-          const ct = response.headers.get('content-type') || '';
-          if (ct.includes('application/json')) {
-            const err = await response.json();
-            detail = (err && (err.detail || err.message)) ? (err.detail || err.message) : JSON.stringify(err);
-          } else {
-            detail = await response.text();
-          }
-        } catch (_) {}
-        throw new Error(`Failed to start analysis: ${response.status} ${detail}`);
-      }
-
-      const data = await response.json();
-      setSessionId(data.session_id);
+      const response = await smartBotAPI.startAnalysis({ application_id: applicationId });
       
-      // Add initial message if provided
-      if (data.initial_message) {
-        const initialMessage: Message = {
+      setSessionId(response.data.session_id);
+      
+      if (response.data.initial_message) {
+        const initialMessage: SmartBotMessage = {
           id: Date.now().toString(),
           role: 'ASSISTANT' as const,
-          content: data.initial_message,
+          content: response.data.initial_message,
           created_at: new Date().toISOString()
         };
         setMessages([initialMessage]);
       }
       
-      setIsCompleted(data.is_completed || false);
+      if (response.data.is_completed) {
+        setIsCompleted(true);
+      }
     } catch (error) {
       console.error('Error starting analysis:', error);
       setMessages([{
         id: Date.now().toString(),
         role: 'ASSISTANT' as const,
-        content: error instanceof Error ? error.message : 'Извините, произошла ошибка при запуске анализа. Попробуйте позже.',
+        content: 'Извините, произошла ошибка при запуске анализа. Попробуйте позже.',
         created_at: new Date().toISOString()
       }]);
     } finally {
@@ -106,7 +69,7 @@ const SmartBotWidget: React.FC<SmartBotWidgetProps> = ({ applicationId, onClose,
   const sendMessage = async () => {
     if (!inputMessage.trim() || !sessionId) return;
 
-    const userMessage: Message = {
+    const userMessage: SmartBotMessage = {
       id: Date.now().toString(),
       role: 'USER' as const,
       content: inputMessage.trim(),
@@ -118,65 +81,32 @@ const SmartBotWidget: React.FC<SmartBotWidgetProps> = ({ applicationId, onClose,
     setIsLoading(true);
 
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        const errorMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          role: 'ASSISTANT' as const,
-          content: 'Вы не авторизованы. Войдите, чтобы продолжить.',
-          created_at: new Date().toISOString()
-        };
-        setMessages(prev => [...prev, errorMessage]);
-        setIsLoading(false);
-        return;
-      }
-
-      const response = await fetch('http://localhost:8000/api/smartbot/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          session_id: sessionId,
-          message: userMessage.content
-        })
+      const response = await smartBotAPI.sendMessage({
+        session_id: sessionId,
+        message: userMessage.content
       });
-
-      if (!response.ok) {
-        let detail = '';
-        try {
-          const ct = response.headers.get('content-type') || '';
-          if (ct.includes('application/json')) {
-            const err = await response.json();
-            detail = (err && (err.detail || err.message)) ? (err.detail || err.message) : JSON.stringify(err);
-          } else {
-            detail = await response.text();
-          }
-        } catch (_) {}
-        throw new Error(`Failed to send message: ${response.status} ${detail}`);
-      }
-
-      const data = await response.json();
       
-      const botMessage: Message = {
+      const botMessage: SmartBotMessage = {
         id: (Date.now() + 1).toString(),
         role: 'ASSISTANT' as const,
-        content: data.message,
+        content: response.data.message,
         created_at: new Date().toISOString()
       };
 
       setMessages(prev => [...prev, botMessage]);
       
-      if (data.is_completed) {
+      if (response.data.is_completed) {
         setIsCompleted(true);
+        if (response.data.analysis) {
+          setAnalysis(response.data.analysis);
+        }
       }
     } catch (error) {
       console.error('Error sending message:', error);
-      const errorMessage: Message = {
+      const errorMessage: SmartBotMessage = {
         id: (Date.now() + 1).toString(),
         role: 'ASSISTANT' as const,
-        content: error instanceof Error ? error.message : 'Извините, произошла ошибка. Попробуйте еще раз.',
+        content: 'Извините, произошла ошибка. Попробуйте еще раз.',
         created_at: new Date().toISOString()
       };
       setMessages(prev => [...prev, errorMessage]);
@@ -210,6 +140,15 @@ const SmartBotWidget: React.FC<SmartBotWidgetProps> = ({ applicationId, onClose,
           )}
         </div>
         <div className="flex items-center space-x-2">
+          {analysis && (
+            <button
+              onClick={() => setShowAnalysis(!showAnalysis)}
+              className="text-white hover:text-gray-200 transition-colors"
+              title="Показать анализ"
+            >
+              <BarChart3 className="w-4 h-4" />
+            </button>
+          )}
           <button
             onClick={onToggleMinimize}
             className="text-white hover:text-gray-200 transition-colors"
@@ -225,43 +164,118 @@ const SmartBotWidget: React.FC<SmartBotWidgetProps> = ({ applicationId, onClose,
         </div>
       </div>
 
-      {/* Messages */}
+      {/* Messages or Analysis */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`flex ${message.role === 'USER' ? 'justify-end' : 'justify-start'}`}
-          >
-            <div
-              className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                message.role === 'USER'
-                  ? 'bg-blue-500 text-white'
-                  : message.role === 'ASSISTANT'
-                  ? 'bg-gray-200 text-gray-800'
-                  : 'bg-green-100 text-green-800 border border-green-300'
-              }`}
-            >
-              <p className="text-sm">{message.content}</p>
-              <p className="text-xs mt-1 opacity-70">
-                {new Date(message.created_at).toLocaleTimeString()}
-              </p>
+        {showAnalysis && analysis ? (
+          <div className="space-y-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h3 className="font-semibold text-blue-900 mb-2 flex items-center">
+                <BarChart3 className="w-4 h-4 mr-2" />
+                Анализ кандидата
+              </h3>
+              <div className="space-y-3">
+                <div>
+                  <span className="text-sm font-medium text-gray-700">Общий балл:</span>
+                  <div className="flex items-center mt-1">
+                    <div className="flex-1 bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-blue-600 h-2 rounded-full" 
+                        style={{ width: `${analysis.overall_score}%` }}
+                      ></div>
+                    </div>
+                    <span className="ml-2 text-sm font-semibold text-blue-600">
+                      {analysis.overall_score}/100
+                    </span>
+                  </div>
+                </div>
+                
+                <div>
+                  <span className="text-sm font-medium text-gray-700">Резюме:</span>
+                  <p className="text-sm text-gray-600 mt-1">{analysis.summary}</p>
+                </div>
+                
+                {analysis.strengths.length > 0 && (
+                  <div>
+                    <span className="text-sm font-medium text-green-700">Сильные стороны:</span>
+                    <ul className="text-sm text-green-600 mt-1 list-disc list-inside">
+                      {analysis.strengths.map((strength, index) => (
+                        <li key={index}>{strength}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                
+                {analysis.weaknesses.length > 0 && (
+                  <div>
+                    <span className="text-sm font-medium text-red-700">Области для улучшения:</span>
+                    <ul className="text-sm text-red-600 mt-1 list-disc list-inside">
+                      {analysis.weaknesses.map((weakness, index) => (
+                        <li key={index}>{weakness}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                
+                {analysis.recommendations.length > 0 && (
+                  <div>
+                    <span className="text-sm font-medium text-blue-700">Рекомендации:</span>
+                    <ul className="text-sm text-blue-600 mt-1 list-disc list-inside">
+                      {analysis.recommendations.map((recommendation, index) => (
+                        <li key={index}>{recommendation}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+              
+              <button
+                onClick={() => setShowAnalysis(false)}
+                className="mt-3 text-sm text-blue-600 hover:text-blue-800 flex items-center"
+              >
+                <MessageCircle className="w-4 h-4 mr-1" />
+                Вернуться к чату
+              </button>
             </div>
           </div>
-        ))}
-        {isLoading && (
-            <div className="flex justify-start">
-              <div className="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg">
-                <div className="flex items-center space-x-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
-                  <span className="text-sm">SmartBot печатает...</span>
+        ) : (
+          <>
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={`flex ${message.role === 'USER' ? 'justify-end' : 'justify-start'}`}
+              >
+                <div
+                  className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                    message.role === 'USER'
+                      ? 'bg-blue-500 text-white'
+                      : message.role === 'ASSISTANT'
+                      ? 'bg-gray-200 text-gray-800'
+                      : 'bg-green-100 text-green-800 border border-green-300'
+                  }`}
+                >
+                  <p className="text-sm">{message.content}</p>
+                  <p className="text-xs mt-1 opacity-70">
+                    {new Date(message.created_at).toLocaleTimeString()}
+                  </p>
                 </div>
               </div>
-            </div>
-          )}
+            ))}
+            {isLoading && (
+              <div className="flex justify-start">
+                <div className="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg">
+                  <div className="flex items-center space-x-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
+                    <span className="text-sm">SmartBot печатает...</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
+      {/* Input Area */}
       {!isCompleted && (
         <div className="p-4 border-t border-gray-200">
           <div className="flex space-x-2">
@@ -285,6 +299,7 @@ const SmartBotWidget: React.FC<SmartBotWidgetProps> = ({ applicationId, onClose,
         </div>
       )}
 
+      {/* Completion Status */}
       {isCompleted && (
         <div className="p-4 border-t border-gray-200 bg-green-50">
           <div className="text-center">
