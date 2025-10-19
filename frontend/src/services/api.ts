@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8000/api';
+const API_BASE_URL = 'http://localhost:8000';
 
 // Create axios instance
 const api = axios.create({
@@ -119,12 +119,12 @@ export const authAPI = {
     full_name: string;
     phone?: string;
     user_type: 'job_seeker' | 'employer';
-  }) => api.post<User>('/auth/register', data),
+  }) => api.post<User>('/api/auth/register', data),
 
   login: (data: { email: string; password: string }) =>
-    api.post<{ access_token: string; token_type: string }>('/auth/login', data),
+    api.post<{ access_token: string; token_type: string }>('/api/auth/login', data),
 
-  getMe: () => api.get<User>('/auth/me'),
+  getMe: () => api.get<User>('/api/auth/me'),
 };
 
 // Jobs API
@@ -139,9 +139,9 @@ export const jobsAPI = {
     total: number;
     page: number;
     limit: number;
-  }>('/jobs/', { params }),
+  }>('/api/jobs/', { params }),
 
-  getJob: (id: number) => api.get<Job>(`/jobs/${id}`),
+  getJob: (id: number) => api.get<Job>(`/api/jobs/${id}`),
 
   createJob: (data: {
     title: string;
@@ -151,20 +151,20 @@ export const jobsAPI = {
     salary_max?: number;
     location?: string;
     company_name: string;
-  }) => api.post<Job>('/jobs/', data),
+  }) => api.post<Job>('/api/jobs/', data),
 
-  updateJob: (id: number, data: Partial<Job>) => api.put<Job>(`/jobs/${id}`, data),
+  updateJob: (id: number, data: Partial<Job>) => api.put<Job>(`/api/jobs/${id}`, data),
 
-  deleteJob: (id: number) => api.delete(`/jobs/${id}`),
+  deleteJob: (id: number) => api.delete(`/api/jobs/${id}`),
 
-  getMyJobs: () => api.get<Job[]>('/jobs/my/jobs'),
+  getMyJobs: () => api.get<Job[]>('/api/jobs/my/jobs'),
 };
 
 // Resumes API
 export const resumesAPI = {
-  getResumes: () => api.get<Resume[]>('/resumes/'),
+  getResumes: () => api.get<Resume[]>('/api/resumes/'),
 
-  getResume: (id: number) => api.get<Resume>(`/resumes/${id}`),
+  getResume: (id: number) => api.get<Resume>(`/api/resumes/${id}`),
 
   createResume: (data: {
     title: string;
@@ -178,34 +178,34 @@ export const resumesAPI = {
     desired_salary?: number;
     location?: string;
     is_public?: boolean;
-  }) => api.post<Resume>('/resumes/', data),
+  }) => api.post<Resume>('/api/resumes/', data),
 
   updateResume: (id: number, data: Partial<Resume>) =>
-    api.put<Resume>(`/resumes/${id}`, data),
+    api.put<Resume>(`/api/resumes/${id}`, data),
 
-  deleteResume: (id: number) => api.delete(`/resumes/${id}`),
+  deleteResume: (id: number) => api.delete(`/api/resumes/${id}`),
 };
 
 // Applications API
 export const applicationsAPI = {
-  getApplications: () => api.get<Application[]>('/applications/'),
+  getApplications: () => api.get<Application[]>('/api/applications/'),
 
-  getApplication: (id: number) => api.get<Application>(`/applications/${id}`),
+  getApplication: (id: number) => api.get<Application>(`/api/applications/${id}`),
 
   createApplication: (data: {
     job_id: number;
     resume_id: number;
     cover_letter?: string;
-  }) => api.post<Application>('/applications/', data),
+  }) => api.post<Application>('/api/applications/', data),
 
   updateApplication: (id: number, data: {
     cover_letter?: string;
     status?: 'pending' | 'reviewed' | 'accepted' | 'rejected';
-  }) => api.put<Application>(`/applications/${id}`, data),
+  }) => api.put<Application>(`/api/applications/${id}`, data),
 
-  deleteApplication: (id: number) => api.delete(`/applications/${id}`),
+  deleteApplication: (id: number) => api.delete(`/api/applications/${id}`),
 
-  getApplicationResume: (applicationId: number) => api.get<Resume>(`/applications/${applicationId}/resume`),
+  getApplicationResume: (applicationId: number) => api.get<Resume>(`/api/applications/${applicationId}/resume`),
 };
 
 // Chat API
@@ -239,12 +239,38 @@ export interface CandidateAnalysis {
 
 export const chatAPI = {
   sendMessage: (data: { message: string; session_id?: string }) =>
-    api.post<{ message: string; session_id: string }>('/chat/', data),
+    api.post<{ message: string; session_id: string }>('/api/chat/', data),
 
-  getSession: (sessionId: string) => api.get<ChatSession>(`/chat/sessions/${sessionId}`),
+  getSession: (sessionId: string) => api.get<ChatSession>(`/api/chat/sessions/${sessionId}`),
 
-  getSessions: () => api.get<ChatSession[]>('/chat/sessions'),
+  getSessions: () => api.get<ChatSession[]>('/api/chat/sessions'),
 };
+
+export interface EmployerAnalysisView {
+  application_id: number;
+  candidate_name: string;
+  candidate_email?: string;
+  session_id: string;
+  session_status: string;
+  relevance_score?: number;
+  recommendation?: string;
+  summary?: string;
+  strengths: string[];
+  concerns: string[];
+  chat_messages: Array<{
+    id: string;
+    role: string;
+    content: string;
+    created_at: string;
+  }>;
+  categories: Array<{
+    name: string;
+    score: number;
+    details: string;
+  }>;
+  applied_at: string;
+  analyzed_at?: string;
+}
 
 export const smartBotAPI = {
   startAnalysis: (data: { application_id: number }) =>
@@ -252,27 +278,32 @@ export const smartBotAPI = {
       session_id: string;
       initial_message?: string;
       is_completed: boolean;
-    }>('/smartbot/start-analysis', data),
+    }>('/api/smartbot/start-analysis', data),
   
   startEmployerAnalysis: (data: { application_id: number }) =>
     api.post<{
       session_id: string;
       initial_message?: string;
       is_completed: boolean;
-    }>('/smartbot/employer/start-analysis', data),
+    }>('/api/smartbot/employer/start-analysis', data),
 
   sendMessage: (data: { session_id: string; message: string }) =>
     api.post<{
       message: string;
       is_completed: boolean;
       analysis?: CandidateAnalysis;
-    }>('/smartbot/chat', data),
+    }>('/api/smartbot/chat', data),
 
-  getSession: (sessionId: string) => api.get<SmartBotSession>(`/smartbot/sessions/${sessionId}`),
+  getSession: (sessionId: string) => api.get<SmartBotSession>(`/api/smartbot/sessions/${sessionId}`),
 
-  getAnalysis: (applicationId: number) => api.get<CandidateAnalysis>(`/smartbot/analysis/${applicationId}`),
+  getAnalysis: (applicationId: number) => api.get<CandidateAnalysis>(`/api/smartbot/analysis/${applicationId}`),
 
-  getSessionMessages: (sessionId: string) => api.get<SmartBotMessage[]>(`/smartbot/sessions/${sessionId}/messages`),
+  getSessionMessages: (sessionId: string) => api.get<SmartBotMessage[]>(`/api/smartbot/sessions/${sessionId}/messages`),
+
+  // Employer-specific endpoints
+  getEmployerAnalysis: (jobId: number) => api.get<EmployerAnalysisView[]>(`/api/smartbot/employer/applications/${jobId}`),
+  
+  getEmployerApplicationAnalysis: (applicationId: number) => api.get<EmployerAnalysisView>(`/api/smartbot/employer/application-analysis/${applicationId}`),
 };
 
 export default api;

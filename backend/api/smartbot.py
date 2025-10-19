@@ -67,11 +67,11 @@ async def start_analysis(
         ).order_by(SmartBotMessage.created_at).first()
         
         return SmartBotInitResponse(
-        session_id=session.session_id,
-        status=session.status,
-        initial_message=initial_message.content if initial_message else "Добро пожаловать в SmartBot!",
-        is_completed=session.status == "completed"
-    )
+            session_id=session.session_id,
+            status=session.status,
+            initial_message=initial_message.content if initial_message else "Добро пожаловать в SmartBot!",
+            is_completed=session.status == "completed"
+        )
         
     except Exception as e:
         import traceback
@@ -469,7 +469,100 @@ async def get_single_analysis(
             for cat in categories
         ],
         applied_at=application.created_at,
-        analyzed_at=session.updated_at
+        analyzed_at=session.completed_at or session.started_at
+    )
+
+
+@router.get("/employer/application-analysis/{application_id}", response_model=EmployerAnalysisView)
+async def get_application_analysis(
+    application_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Get detailed analysis for a specific application (for employers)
+    """
+    # Get application and verify job ownership
+    application = db.query(JobApplication).filter(
+        JobApplication.id == application_id
+    ).first()
+    
+    if not application:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Application not found"
+        )
+    
+    job = db.query(Job).filter(
+        Job.id == application.job_id,
+        Job.employer_id == current_user.id
+    ).first()
+    
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied"
+        )
+    
+    # Get SmartBot session
+    session = db.query(SmartBotSession).filter(
+        SmartBotSession.application_id == application_id
+    ).first()
+    
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Analysis not found for this application"
+        )
+    
+    # Get user info
+    user = db.query(User).filter(User.id == application.user_id).first()
+    
+    # Get analysis
+    analysis = db.query(CandidateAnalysis).filter(
+        CandidateAnalysis.session_id == session.session_id
+    ).first()
+    
+    # Get chat messages
+    messages = db.query(SmartBotMessage).filter(
+        SmartBotMessage.session_id == session.session_id
+    ).order_by(SmartBotMessage.created_at).all()
+    
+    # Get analysis categories
+    categories = (
+        db.query(AnalysisCategory)
+        .filter(AnalysisCategory.analysis_id == analysis.id)
+        .all()
+    ) if analysis else []
+    
+    return EmployerAnalysisView(
+        application_id=application.id,
+        candidate_name=user.full_name if user else "Unknown",
+        candidate_email=user.email if user else None,
+        session_id=session.session_id,
+        session_status=session.status,
+        relevance_score=analysis.final_score if analysis else None,
+        recommendation=_get_recommendation_from_score(analysis.final_score) if analysis and analysis.final_score else None,
+        summary=analysis.summary if analysis else None,
+        strengths=json.loads(analysis.strengths) if analysis and analysis.strengths else [],
+        concerns=json.loads(analysis.weaknesses) if analysis and analysis.weaknesses else [],
+        chat_messages=[
+            {
+                "id": msg.id,
+                "role": msg.message_type,
+                "content": msg.content,
+                "created_at": msg.created_at.isoformat()
+            } for msg in messages
+        ],
+        categories=[
+            {
+                "name": cat.category,
+                "score": cat.score,
+                "details": cat.details
+            } for cat in categories
+        ],
+        applied_at=application.created_at,
+        analyzed_at=session.completed_at or session.started_at
     )
 
 

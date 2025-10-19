@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bot, X, Minimize2, BarChart3, MessageCircle, ChevronLeft, ChevronRight, FileText, User, Star, TrendingUp, AlertCircle, Download, Mail, Phone, MapPin } from 'lucide-react';
+import { Bot, X, Minimize2, BarChart3, MessageCircle, ChevronLeft, ChevronRight, FileText, User, Star, TrendingUp, AlertCircle, Download } from 'lucide-react';
 import { smartBotAPI, applicationsAPI, type SmartBotMessage, type CandidateAnalysis, type Resume } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 interface SmartBotWidgetProps {
   applicationId: number;
@@ -12,15 +13,15 @@ interface SmartBotWidgetProps {
 type TabType = 'analysis' | 'chat' | 'resume';
 
 const SmartBotWidget: React.FC<SmartBotWidgetProps> = ({ applicationId, onClose, isMinimized, onToggleMinimize }) => {
+  const { isJobSeeker, isEmployer } = useAuth();
   const [messages, setMessages] = useState<SmartBotMessage[]>([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [isCompleted, setIsCompleted] = useState(false);
   const [analysis, setAnalysis] = useState<CandidateAnalysis | null>(null);
-  const [activeTab, setActiveTab] = useState<TabType>('analysis');
+  const [activeTab, setActiveTab] = useState<TabType>(isJobSeeker ? 'chat' : 'analysis');
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [candidateData, setCandidateData] = useState<any>(null);
   const [resume, setResume] = useState<Resume | null>(null);
   const [loadingResume, setLoadingResume] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -36,24 +37,8 @@ const SmartBotWidget: React.FC<SmartBotWidgetProps> = ({ applicationId, onClose,
   useEffect(() => {
     if (applicationId) {
       startAnalysis();
-      loadCandidateData();
     }
   }, [applicationId]);
-
-  const loadCandidateData = async () => {
-    // Здесь будет загрузка данных кандидата и резюме
-    // Пока используем заглушку
-    setCandidateData({
-      name: "Иван Петров",
-      email: "ivan.petrov@email.com",
-      phone: "+7 (999) 123-45-67",
-      position: "Frontend Developer",
-      experience: "3 года",
-      education: "МГУ, Факультет ВМК",
-      skills: ["React", "TypeScript", "Node.js", "Python", "SQL"],
-      resumeUrl: "/api/applications/" + applicationId + "/resume"
-    });
-  };
 
   // Fetch resume when tab changes to resume
   const fetchResume = async () => {
@@ -64,10 +49,56 @@ const SmartBotWidget: React.FC<SmartBotWidgetProps> = ({ applicationId, onClose,
       const response = await applicationsAPI.getApplicationResume(applicationId);
       setResume(response.data);
     } catch (error) {
-      console.error('Error fetching resume:', error);
+      console.error('Ошибка при загрузке резюме:', error);
     } finally {
       setLoadingResume(false);
     }
+  };
+
+  const downloadResume = () => {
+    if (!resume) return;
+    
+    // Создаем текстовое содержимое резюме
+    const resumeContent = `
+РЕЗЮМЕ: ${resume.title}
+
+ОСНОВНАЯ ИНФОРМАЦИЯ:
+Желаемая позиция: ${resume.desired_position || 'Не указано'}
+Желаемая зарплата: ${resume.desired_salary ? `${resume.desired_salary.toLocaleString()} руб.` : 'Не указано'}
+Местоположение: ${resume.location || 'Не указано'}
+
+О СЕБЕ:
+${resume.summary || 'Не указано'}
+
+ОПЫТ РАБОТЫ:
+${resume.experience || 'Не указан'}
+
+ОБРАЗОВАНИЕ:
+${resume.education || 'Не указано'}
+
+НАВЫКИ:
+${resume.skills || 'Не указаны'}
+
+ЯЗЫКИ:
+${resume.languages || 'Не указаны'}
+
+ПОРТФОЛИО:
+${resume.portfolio_url || 'Не указано'}
+
+Дата создания: ${new Date(resume.created_at).toLocaleDateString('ru-RU')}
+Последнее обновление: ${new Date(resume.updated_at).toLocaleDateString('ru-RU')}
+    `.trim();
+
+    // Создаем и скачиваем файл
+    const blob = new Blob([resumeContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `resume_${resume.title.replace(/[^a-zA-Z0-9]/g, '_')}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   useEffect(() => {
@@ -216,7 +247,72 @@ const SmartBotWidget: React.FC<SmartBotWidgetProps> = ({ applicationId, onClose,
             {analysis?.summary || "Анализ кандидата в процессе..."}
           </p>
         </div>
+
+        {/* Рекомендация */}
+        {analysis?.recommendations && analysis.recommendations.length > 0 && (
+          <div className={`mt-4 p-4 rounded-lg border ${
+            analysis.overall_score >= 80 
+              ? 'bg-green-50 border-green-200' 
+              : analysis.overall_score <= 40
+              ? 'bg-red-50 border-red-200'
+              : 'bg-yellow-50 border-yellow-200'
+          }`}>
+            <div className="flex items-center">
+              <div className={`w-3 h-3 rounded-full mr-3 ${
+                analysis.overall_score >= 80 
+                  ? 'bg-green-500' 
+                  : analysis.overall_score <= 40
+                  ? 'bg-red-500'
+                  : 'bg-yellow-500'
+              }`}></div>
+              <span className={`font-medium ${
+                analysis.overall_score >= 80 
+                  ? 'text-green-800' 
+                  : analysis.overall_score <= 40
+                  ? 'text-red-800'
+                  : 'text-yellow-800'
+              }`}>
+                {analysis.overall_score >= 80 
+                  ? 'Рекомендуется к найму' 
+                  : analysis.overall_score <= 40
+                  ? 'Не рекомендуется'
+                  : 'Требует дополнительного рассмотрения'}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* История беседы с кандидатом */}
+      {messages.length > 0 && (
+        <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+          <h3 className="font-semibold text-gray-900 text-lg mb-4 flex items-center">
+            <MessageCircle className="w-5 h-5 mr-3 text-purple-600" />
+            История беседы с кандидатом
+          </h3>
+          <div className="max-h-96 overflow-y-auto space-y-3">
+            {messages.map((message, index) => (
+              <div key={index} className={`flex ${message.role === 'USER' ? 'justify-end' : 'justify-start'}`}>
+                <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                  message.role === 'USER' 
+                    ? 'bg-blue-600 text-white' 
+                    : 'bg-gray-100 text-gray-900'
+                }`}>
+                  <div className="text-sm">{message.content}</div>
+                  <div className={`text-xs mt-1 ${
+                    message.role === 'USER' ? 'text-blue-200' : 'text-gray-500'
+                  }`}>
+                    {new Date(message.created_at).toLocaleTimeString('ru-RU', {
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Сильные стороны */}
       {analysis?.strengths && analysis.strengths.length > 0 && (
@@ -256,25 +352,37 @@ const SmartBotWidget: React.FC<SmartBotWidgetProps> = ({ applicationId, onClose,
         </div>
       )}
 
-      {/* Рекомендации */}
-      {analysis?.recommendations && analysis.recommendations.length > 0 && (
-        <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-          <h3 className="font-semibold text-blue-700 text-lg mb-4 flex items-center">
-            <svg className="w-5 h-5 mr-3" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-            </svg>
-            Рекомендации
-          </h3>
-          <div className="grid gap-3">
-            {analysis.recommendations.map((recommendation, index) => (
-              <div key={index} className="flex items-start bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                <span className="text-blue-800 text-sm">{recommendation}</span>
-              </div>
-            ))}
+      {/* Статистика анализа */}
+      <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+        <h3 className="font-semibold text-gray-900 text-lg mb-4 flex items-center">
+          <BarChart3 className="w-5 h-5 mr-3 text-indigo-600" />
+          Статистика анализа
+        </h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="text-center p-3 bg-gray-50 rounded-lg">
+            <div className="text-2xl font-bold text-indigo-600">{messages.length}</div>
+            <div className="text-sm text-gray-600">Сообщений</div>
+          </div>
+          <div className="text-center p-3 bg-gray-50 rounded-lg">
+            <div className="text-2xl font-bold text-indigo-600">
+              {messages.filter(m => m.role === 'USER').length}
+            </div>
+            <div className="text-sm text-gray-600">Ответов кандидата</div>
+          </div>
+          <div className="text-center p-3 bg-gray-50 rounded-lg">
+            <div className="text-2xl font-bold text-indigo-600">
+              {analysis?.overall_score || 0}
+            </div>
+            <div className="text-sm text-gray-600">Общая оценка</div>
+          </div>
+          <div className="text-center p-3 bg-gray-50 rounded-lg">
+            <div className="text-2xl font-bold text-indigo-600">
+              {isCompleted ? 'Завершен' : 'В процессе'}
+            </div>
+            <div className="text-sm text-gray-600">Статус</div>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 
@@ -347,9 +455,18 @@ const SmartBotWidget: React.FC<SmartBotWidgetProps> = ({ applicationId, onClose,
       <div className="space-y-6">
         {/* Основная информация */}
         <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-          <div className="flex items-center mb-4">
-            <User className="w-6 h-6 text-blue-600 mr-3" />
-            <h3 className="font-semibold text-gray-900 text-lg">Информация о кандидате</h3>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center">
+              <User className="w-6 h-6 text-blue-600 mr-3" />
+              <h3 className="font-semibold text-gray-900 text-lg">Информация о кандидате</h3>
+            </div>
+            <button
+              onClick={downloadResume}
+              className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Скачать резюме
+            </button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -544,20 +661,23 @@ const SmartBotWidget: React.FC<SmartBotWidgetProps> = ({ applicationId, onClose,
             {/* Tab Navigation */}
             <div className="bg-white border-b border-gray-200">
               <nav className="flex">
-                <button
-                  onClick={() => setActiveTab('analysis')}
-                  className={`flex-1 py-3 px-4 text-sm font-medium border-b-2 transition-colors ${
-                    activeTab === 'analysis'
-                      ? 'border-blue-500 text-blue-600 bg-blue-50'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  <BarChart3 className="w-4 h-4 inline mr-2" />
-                  Анализ
-                </button>
+                {/* Показываем вкладку "Анализ" только работодателям */}
+                {isEmployer && (
+                  <button
+                    onClick={() => setActiveTab('analysis')}
+                    className={`flex-1 py-3 px-4 text-sm font-medium border-b-2 transition-colors ${
+                      activeTab === 'analysis'
+                        ? 'border-blue-500 text-blue-600 bg-blue-50'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <BarChart3 className="w-4 h-4 inline mr-2" />
+                    Анализ
+                  </button>
+                )}
                 <button
                   onClick={() => setActiveTab('chat')}
-                  className={`flex-1 py-3 px-4 text-sm font-medium border-b-2 transition-colors ${
+                  className={`${isJobSeeker ? 'w-full' : 'flex-1'} py-3 px-4 text-sm font-medium border-b-2 transition-colors ${
                     activeTab === 'chat'
                       ? 'border-blue-500 text-blue-600 bg-blue-50'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -571,25 +691,28 @@ const SmartBotWidget: React.FC<SmartBotWidgetProps> = ({ applicationId, onClose,
                     </span>
                   )}
                 </button>
-                <button
-                  onClick={() => setActiveTab('resume')}
-                  className={`flex-1 py-3 px-4 text-sm font-medium border-b-2 transition-colors ${
-                    activeTab === 'resume'
-                      ? 'border-blue-500 text-blue-600 bg-blue-50'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  <FileText className="w-4 h-4 inline mr-2" />
-                  Резюме
-                </button>
+                {/* Показываем вкладку "Резюме" только работодателям */}
+                {isEmployer && (
+                  <button
+                    onClick={() => setActiveTab('resume')}
+                    className={`flex-1 py-3 px-4 text-sm font-medium border-b-2 transition-colors ${
+                      activeTab === 'resume'
+                        ? 'border-blue-500 text-blue-600 bg-blue-50'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <FileText className="w-4 h-4 inline mr-2" />
+                    Резюме
+                  </button>
+                )}
               </nav>
             </div>
 
             {/* Tab Content */}
             <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
-              {activeTab === 'analysis' && renderAnalysisTab()}
+              {activeTab === 'analysis' && isEmployer && renderAnalysisTab()}
               {activeTab === 'chat' && renderChatTab()}
-              {activeTab === 'resume' && renderResumeTab()}
+              {activeTab === 'resume' && isEmployer && renderResumeTab()}
             </div>
 
             {/* Input Area - только для вкладки чата */}

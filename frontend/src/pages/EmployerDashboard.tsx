@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Button, Badge, Card, CardBody, CardHeader } from '../components/ui';
 import { jobsAPI, applicationsAPI } from '../services/api';
 import { SmartBotWidget } from '../components/SmartBotWidget';
+import { EmployerAnalysisView } from '../components/EmployerAnalysisView';
 
 interface Job {
   id: string;
@@ -68,6 +69,10 @@ export const EmployerDashboard: React.FC = () => {
   const [showSmartBot, setShowSmartBot] = useState(false);
   const [isSmartBotMinimized, setIsSmartBotMinimized] = useState(false);
   const [selectedApplicationId, setSelectedApplicationId] = useState<number | null>(null);
+
+  // EmployerAnalysisView state
+  const [showAnalysisView, setShowAnalysisView] = useState(false);
+  const [analysisApplicationId, setAnalysisApplicationId] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -188,6 +193,11 @@ export const EmployerDashboard: React.FC = () => {
     setSelectedApplicationId(parseInt(applicationId));
     setShowSmartBot(true);
     setIsSmartBotMinimized(false);
+  };
+
+  const handleViewAnalysis = (applicationId: string) => {
+    setAnalysisApplicationId(parseInt(applicationId));
+    setShowAnalysisView(true);
   };
 
   if (loading) {
@@ -506,6 +516,13 @@ export const EmployerDashboard: React.FC = () => {
                             >
                               SmartBot Анализ
                             </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => handleViewAnalysis(application.id)}
+                            >
+                              Посмотреть отчет
+                            </Button>
                             <Button variant="outline" size="sm">
                               Скачать резюме
                             </Button>
@@ -623,6 +640,17 @@ export const EmployerDashboard: React.FC = () => {
             setShowSmartBot(false);
             setSelectedApplicationId(null);
             setIsSmartBotMinimized(false);
+          }}
+        />
+      )}
+
+      {/* Employer Analysis View */}
+      {showAnalysisView && analysisApplicationId && (
+        <EmployerAnalysisView
+          applicationId={analysisApplicationId}
+          onClose={() => {
+            setShowAnalysisView(false);
+            setAnalysisApplicationId(null);
           }}
         />
       )}

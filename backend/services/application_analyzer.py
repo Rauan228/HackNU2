@@ -212,6 +212,13 @@ class ApplicationAnalyzer:
 
         db.commit()
 
+        # Send notification to employer about completed analysis
+        try:
+            from services.notification_service import notification_service
+            await notification_service.send_analysis_completion_notification(db, session_id)
+        except Exception as e:
+            logging.error(f"Failed to send notification: {str(e)}")
+
         return {
             "message": bot_response,
             "session_status": session.status,
