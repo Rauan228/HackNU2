@@ -177,26 +177,21 @@ async def get_session(
     ).first()
     
     return SmartBotSessionResponse(
-        session_id=session.session_id,
+        id=session.id,
         application_id=session.application_id,
         status=session.status,
+        started_at=session.started_at,
+        completed_at=session.completed_at,
         messages=[
             {
                 "id": msg.id,
-                "type": msg.message_type.value if hasattr(msg.message_type, 'value') else msg.message_type,
+                "message_type": msg.message_type.value if hasattr(msg.message_type, 'value') else msg.message_type,
                 "content": msg.content,
+                "metadata": msg.message_metadata,
                 "created_at": msg.created_at
             }
             for msg in messages
-        ],
-        analysis={
-            "initial_score": analysis.initial_score if analysis else None,
-            "final_score": analysis.final_score if analysis else None,
-            "summary": analysis.summary if analysis else None,
-            "status": analysis.status if analysis else None
-        } if analysis else None,
-        created_at=session.created_at,
-        updated_at=session.updated_at
+        ]
     )
 
 

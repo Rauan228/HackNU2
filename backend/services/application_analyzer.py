@@ -48,6 +48,9 @@ class ApplicationAnalyzer:
         try:
             analysis_result = await self._analyze_application(job, resume, user)
             
+            # Build full questions list (fallback to discrepancies if empty)
+            questions: List[Dict[str, Any]] = analysis_result.get("questions") or self._build_questions_from_discrepancies(analysis_result.get("discrepancies", []))
+            
             # Save initial analysis
             candidate_analysis = CandidateAnalysis(
                 session_id=session.session_id,
@@ -58,7 +61,7 @@ class ApplicationAnalyzer:
                 clarifications_received=json.dumps({"items": []}, ensure_ascii=False),
                 summary="Первичный анализ завершен",
                 status=AnalysisStatus.IN_PROGRESS.value,
-                questions_asked=1 if analysis_result.get("questions") else 0,
+                questions_asked=1 if questions else 0,
                 recommendation=analysis_result.get("recommendation")
             )
             db.add(candidate_analysis)
@@ -77,8 +80,9 @@ class ApplicationAnalyzer:
                 db.add(category)
             
             # Create initial bot message
-            if analysis_result.get("questions"):
-                first_question = analysis_result["questions"][0]
+            if questions:
+                first_question = questions[0]
+                remaining_questions = questions[1:]
                 welcome_message = f"Спасибо за отклик на вакансию! Я SmartBot и помогу работодателю лучше понять ваш профиль. {first_question['question']}"
                 
                 bot_message = SmartBotMessage(
@@ -88,7 +92,7 @@ class ApplicationAnalyzer:
                     message_metadata=json.dumps({
                         "question_category": first_question.get("category"),
                         "question_reason": first_question.get("reason"),
-                        "remaining_questions": []
+                        "remaining_questions": remaining_questions
                     }, ensure_ascii=False)
                 )
                 db.add(bot_message)
@@ -114,7 +118,7 @@ class ApplicationAnalyzer:
             session.status = SmartBotSessionStatus.ERROR
             db.commit()
             raise e
-    
+
     async def process_candidate_response(self, db: Session, session_id: str, user_message: str) -> Dict[str, Any]:
         """Process candidate's response and generate next question or complete analysis"""
         
@@ -182,7 +186,50 @@ class ApplicationAnalyzer:
             analysis.clarifications_received = json.dumps({"items": items}, ensure_ascii=False)
             analysis.questions_answered = (analysis.questions_answered or 0) + 1
 
-        # Complete analysis immediately after first answer (single-question flow)
+            # Update category status/details based on clarification
+            if metadata.get("question_category"):
+                cat = db.query(AnalysisCategory).filter(
+                    AnalysisCategory.analysis_id == analysis.id,
+                    AnalysisCategory.category == metadata.get("question_category")
+                ).first()
+                if cat:
+                    # Mark as clarified and append candidate answer
+                    cat.status = "clarified"
+                    try:
+                        cat.details = (cat.details or "") + (" | Ответ кандидата: " + user_message)
+                    except Exception:
+                        cat.details = (cat.details or "")
+
+        # If there are remaining questions, ask the next one
+        if remaining_questions:
+            next_question = remaining_questions[0]
+            new_remaining = remaining_questions[1:]
+
+            bot_message = SmartBotMessage(
+                session_id=session_id,
+                message_type=SmartBotMessageType.QUESTION.value,
+                content=next_question.get("question", "Уточните, пожалуйста."),
+                message_metadata=json.dumps({
+                    "question_category": next_question.get("category"),
+                    "question_reason": next_question.get("reason"),
+                    "remaining_questions": new_remaining
+                }, ensure_ascii=False)
+            )
+            db.add(bot_message)
+
+            # Keep session active and increment asked counter
+            if analysis:
+                analysis.questions_asked = (analysis.questions_asked or 0) + 1
+            session.status = SmartBotSessionStatus.ACTIVE
+            db.commit()
+            
+            return {
+                "message": bot_message.content,
+                "session_status": session.status,
+                "is_completed": False
+            }
+
+        # No remaining questions: finalize analysis
         final_analysis = await self._finalize_analysis(db, session_id)
 
         bot_response = "Спасибо за ответы! Анализ завершен. Работодатель получит подробную информацию о вашем профиле."
@@ -426,6 +473,11 @@ class ApplicationAnalyzer:
                     "category": "город",
                     "issue": "Кандидат из другого города",
                     "severity": "medium"
+                },
+                {
+                    "category": "образование",
+                    "issue": "Не указано соответствующее высшее образование",
+                    "severity": "low"
                 }
             ],
             "questions": [
@@ -433,10 +485,15 @@ class ApplicationAnalyzer:
                     "category": "город",
                     "question": "Вижу, что вы из другого города. Готовы ли вы рассмотреть переезд или удаленную работу?",
                     "reason": "Уточнить готовность к переезду"
+                },
+                {
+                    "category": "образование",
+                    "question": "Пожалуйста, уточните уровень вашего образования и профиль, чтобы понять соответствие требованиям вакансии.",
+                    "reason": "Проверить соответствие образования"
                 }
             ],
             "strengths": ["Подходящий опыт работы", "Релевантные навыки"],
-            "concerns": ["Несоответствие по локации"],
+            "concerns": ["Несоответствие по локации", "Неясность по образованию"],
             "recommendation": "consider"
         }
     
