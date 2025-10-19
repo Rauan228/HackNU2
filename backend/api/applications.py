@@ -214,6 +214,46 @@ def update_application(
     return application
 
 
+@router.get("/{application_id}/resume")
+def get_application_resume(
+    application_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Get resume for a specific application (for employers to view candidate resumes)"""
+    application = (
+        db.query(JobApplication)
+        .options(
+            joinedload(JobApplication.resume),
+            joinedload(JobApplication.job),
+            joinedload(JobApplication.user)
+        )
+        .filter(JobApplication.id == application_id)
+        .first()
+    )
+    
+    if not application:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Application not found"
+        )
+    
+    # Only employers can view resumes for applications to their jobs
+    if current_user.user_type != UserType.EMPLOYER or application.job.employer_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only view resumes for applications to your jobs"
+        )
+    
+    if not application.resume:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Resume not found for this application"
+        )
+    
+    return application.resume
+
+
 @router.delete("/{application_id}")
 def delete_application(
     application_id: int,

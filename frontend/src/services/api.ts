@@ -204,6 +204,8 @@ export const applicationsAPI = {
   }) => api.put<Application>(`/applications/${id}`, data),
 
   deleteApplication: (id: number) => api.delete(`/applications/${id}`),
+
+  getApplicationResume: (applicationId: number) => api.get<Resume>(`/applications/${applicationId}/resume`),
 };
 
 // Chat API
@@ -251,6 +253,13 @@ export const smartBotAPI = {
       initial_message?: string;
       is_completed: boolean;
     }>('/smartbot/start-analysis', data),
+  
+  startEmployerAnalysis: (data: { application_id: number }) =>
+    api.post<{
+      session_id: string;
+      initial_message?: string;
+      is_completed: boolean;
+    }>('/smartbot/employer/start-analysis', data),
 
   sendMessage: (data: { session_id: string; message: string }) =>
     api.post<{

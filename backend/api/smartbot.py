@@ -200,6 +200,89 @@ async def get_session(
     )
 
 
+@router.post("/employer/start-analysis", response_model=SmartBotInitResponse)
+async def start_employer_analysis(
+    request: SmartBotInitRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Start SmartBot analysis session for a job application (for employers)
+    """
+    # Verify user is an employer
+    if current_user.user_type != 'employer':
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only employers can access this endpoint"
+        )
+    
+    # Get the application
+    application = db.query(JobApplication).filter(
+        JobApplication.id == request.application_id
+    ).first()
+    
+    if not application:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Application not found"
+        )
+    
+    # Verify employer owns the job
+    job = db.query(Job).filter(
+        Job.id == application.job_id,
+        Job.employer_id == current_user.id
+    ).first()
+    
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied - you don't own this job"
+        )
+    
+    # Check if analysis session already exists
+    existing_session = db.query(SmartBotSession).filter(
+        SmartBotSession.application_id == application.id
+    ).first()
+    
+    if existing_session:
+        # Return existing session
+        messages = db.query(SmartBotMessage).filter(
+            SmartBotMessage.session_id == existing_session.session_id
+        ).order_by(SmartBotMessage.created_at).all()
+        
+        return SmartBotInitResponse(
+            session_id=existing_session.session_id,
+            status=existing_session.status,
+            initial_message=messages[0].content if messages else "Добро пожаловать в SmartBot!",
+            is_completed=existing_session.status == "completed"
+        )
+    
+    try:
+        # Start new analysis session
+        session = await application_analyzer.start_analysis_session(db, application)
+        
+        # Get the initial message
+        initial_message = db.query(SmartBotMessage).filter(
+            SmartBotMessage.session_id == session.session_id
+        ).order_by(SmartBotMessage.created_at).first()
+        
+        return SmartBotInitResponse(
+            session_id=session.session_id,
+            status=session.status,
+            initial_message=initial_message.content if initial_message else "Добро пожаловать в SmartBot!",
+            is_completed=session.status == "completed"
+        )
+        
+    except Exception as e:
+        import traceback
+        print(f"ERROR in start_employer_analysis: {str(e)}")
+        print(f"ERROR traceback: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to start analysis: {str(e)}"
+        )
+
+
 @router.get("/employer/applications/{job_id}", response_model=List[EmployerAnalysisView])
 async def get_employer_analysis(
     job_id: int,
