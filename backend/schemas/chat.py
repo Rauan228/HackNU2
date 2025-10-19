@@ -3,11 +3,9 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime
 from models.chat import MessageRole, SmartBotMessageType, SmartBotSessionStatus, AnalysisStatus
 
-
 class ChatMessageCreate(BaseModel):
     message: str
     session_id: Optional[str] = None
-
 
 class ChatMessageResponse(BaseModel):
     id: int
@@ -17,7 +15,6 @@ class ChatMessageResponse(BaseModel):
 
     class Config:
         from_attributes = True
-
 
 class ChatSessionResponse(BaseModel):
     id: int
@@ -30,18 +27,13 @@ class ChatSessionResponse(BaseModel):
     class Config:
         from_attributes = True
 
-
 class ChatResponse(BaseModel):
     message: str
     session_id: str
 
-
-# SmartBot Schemas
-
 class SmartBotMessageCreate(BaseModel):
     content: str
     metadata: Optional[Dict[str, Any]] = None
-
 
 class SmartBotMessageResponse(BaseModel):
     id: int
@@ -53,10 +45,8 @@ class SmartBotMessageResponse(BaseModel):
     class Config:
         from_attributes = True
 
-
 class SmartBotSessionCreate(BaseModel):
     application_id: int
-
 
 class SmartBotSessionResponse(BaseModel):
     id: int
@@ -69,7 +59,6 @@ class SmartBotSessionResponse(BaseModel):
     class Config:
         from_attributes = True
 
-
 class AnalysisCategoryResponse(BaseModel):
     id: int
     category: str
@@ -80,7 +69,6 @@ class AnalysisCategoryResponse(BaseModel):
 
     class Config:
         from_attributes = True
-
 
 class CandidateAnalysisResponse(BaseModel):
     id: int
@@ -105,21 +93,17 @@ class CandidateAnalysisResponse(BaseModel):
     class Config:
         from_attributes = True
 
-
 class SmartBotChatRequest(BaseModel):
     session_id: str
     message: str
-
 
 class SmartBotChatResponse(BaseModel):
     message: str
     session_status: str
     is_completed: bool = False
 
-
 class SmartBotInitRequest(BaseModel):
     application_id: int
-
 
 class SmartBotInitResponse(BaseModel):
     session_id: str
@@ -128,9 +112,7 @@ class SmartBotInitResponse(BaseModel):
     is_completed: bool = False
     questions_to_ask: List[str] = []
 
-
 class EmployerAnalysisView(BaseModel):
-    """Comprehensive view for employers to see candidate analysis"""
     application_id: int
     candidate_name: str
     candidate_email: Optional[str] = None

@@ -2,13 +2,11 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Briefcase, Users, MessageCircle, TrendingUp } from 'lucide-react';
-
 const Home: React.FC = () => {
   const { user, isEmployer, isJobSeeker } = useAuth();
-
   return (
     <div className="space-y-12">
-      {/* Hero Section */}
+      {}
       <div className="text-center">
         <h1 className="text-4xl font-bold text-gray-900 sm:text-5xl md:text-6xl">
           Найдите идеальную работу с{' '}
@@ -54,8 +52,7 @@ const Home: React.FC = () => {
           )}
         </div>
       </div>
-
-      {/* Features */}
+      {}
       <div className="py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="lg:text-center">
@@ -66,7 +63,6 @@ const Home: React.FC = () => {
               Все для успешного поиска работы
             </p>
           </div>
-
           <div className="mt-10">
             <div className="space-y-10 md:space-y-0 md:grid md:grid-cols-2 md:gap-x-8 md:gap-y-10">
               <div className="relative">
@@ -80,7 +76,6 @@ const Home: React.FC = () => {
                   Удобный поиск и фильтрация вакансий по различным критериям
                 </p>
               </div>
-
               <div className="relative">
                 <div className="absolute flex items-center justify-center h-12 w-12 rounded-md bg-blue-500 text-white">
                   <Users className="h-6 w-6" />
@@ -92,7 +87,6 @@ const Home: React.FC = () => {
                   Создавайте и редактируйте резюме, откликайтесь на вакансии
                 </p>
               </div>
-
               <div className="relative">
                 <div className="absolute flex items-center justify-center h-12 w-12 rounded-md bg-blue-500 text-white">
                   <MessageCircle className="h-6 w-6" />
@@ -104,7 +98,6 @@ const Home: React.FC = () => {
                   ИИ-помощник для консультаций по карьере и поиску работы
                 </p>
               </div>
-
               <div className="relative">
                 <div className="absolute flex items-center justify-center h-12 w-12 rounded-md bg-blue-500 text-white">
                   <TrendingUp className="h-6 w-6" />
@@ -120,8 +113,7 @@ const Home: React.FC = () => {
           </div>
         </div>
       </div>
-
-      {/* CTA Section */}
+      {}
       <div className="bg-blue-600 rounded-lg">
         <div className="max-w-2xl mx-auto text-center py-16 px-4 sm:py-20 sm:px-6 lg:px-8">
           <h2 className="text-3xl font-extrabold text-white sm:text-4xl">
@@ -144,5 +136,4 @@ const Home: React.FC = () => {
     </div>
   );
 };
-
-export default Home;
+export default Home;

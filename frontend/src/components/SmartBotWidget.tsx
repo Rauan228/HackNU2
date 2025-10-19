@@ -2,16 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Bot, X, Minimize2, BarChart3, MessageCircle, ChevronLeft, ChevronRight, FileText, User, Star, TrendingUp, AlertCircle, Download } from 'lucide-react';
 import { smartBotAPI, applicationsAPI, type SmartBotMessage, type CandidateAnalysis, type Resume } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-
 interface SmartBotWidgetProps {
   applicationId: number;
   onClose: () => void;
   isMinimized: boolean;
   onToggleMinimize: () => void;
 }
-
 type TabType = 'analysis' | 'chat' | 'resume';
-
 const SmartBotWidget: React.FC<SmartBotWidgetProps> = ({ applicationId, onClose, isMinimized, onToggleMinimize }) => {
   const { isJobSeeker, isEmployer } = useAuth();
   const [messages, setMessages] = useState<SmartBotMessage[]>([]);
@@ -25,25 +22,19 @@ const SmartBotWidget: React.FC<SmartBotWidgetProps> = ({ applicationId, onClose,
   const [resume, setResume] = useState<Resume | null>(null);
   const [loadingResume, setLoadingResume] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
-
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
-
   useEffect(() => {
     if (applicationId) {
       startAnalysis();
     }
   }, [applicationId]);
-
-  // Fetch resume when tab changes to resume
   const fetchResume = async () => {
     if (!applicationId || resume) return;
-    
     setLoadingResume(true);
     try {
       const response = await applicationsAPI.getApplicationResume(applicationId);
@@ -54,42 +45,29 @@ const SmartBotWidget: React.FC<SmartBotWidgetProps> = ({ applicationId, onClose,
       setLoadingResume(false);
     }
   };
-
   const downloadResume = () => {
     if (!resume) return;
-    
-    // Создаем текстовое содержимое резюме
     const resumeContent = `
 РЕЗЮМЕ: ${resume.title}
-
 ОСНОВНАЯ ИНФОРМАЦИЯ:
 Желаемая позиция: ${resume.desired_position || 'Не указано'}
 Желаемая зарплата: ${resume.desired_salary ? `${resume.desired_salary.toLocaleString()} руб.` : 'Не указано'}
 Местоположение: ${resume.location || 'Не указано'}
-
 О СЕБЕ:
 ${resume.summary || 'Не указано'}
-
 ОПЫТ РАБОТЫ:
 ${resume.experience || 'Не указан'}
-
 ОБРАЗОВАНИЕ:
 ${resume.education || 'Не указано'}
-
 НАВЫКИ:
 ${resume.skills || 'Не указаны'}
-
 ЯЗЫКИ:
 ${resume.languages || 'Не указаны'}
-
 ПОРТФОЛИО:
 ${resume.portfolio_url || 'Не указано'}
-
 Дата создания: ${new Date(resume.created_at).toLocaleDateString('ru-RU')}
 Последнее обновление: ${new Date(resume.updated_at).toLocaleDateString('ru-RU')}
     `.trim();
-
-    // Создаем и скачиваем файл
     const blob = new Blob([resumeContent], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -100,20 +78,16 @@ ${resume.portfolio_url || 'Не указано'}
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
-
   useEffect(() => {
     if (activeTab === 'resume') {
       fetchResume();
     }
   }, [activeTab, applicationId]);
-
   const startAnalysis = async () => {
     setIsLoading(true);
     try {
       const response = await smartBotAPI.startAnalysis({ application_id: applicationId });
-      
       setSessionId(response.data.session_id);
-      
       if (response.data.initial_message) {
         const initialMessage: SmartBotMessage = {
           id: Date.now().toString(),
@@ -123,10 +97,8 @@ ${resume.portfolio_url || 'Не указано'}
         };
         setMessages([initialMessage]);
       }
-      
       if (response.data.is_completed) {
         setIsCompleted(true);
-        // Имитируем полученный анализ для демонстрации
         setAnalysis({
           id: 1,
           application_id: applicationId,
@@ -163,36 +135,29 @@ ${resume.portfolio_url || 'Не указано'}
       setIsLoading(false);
     }
   };
-
   const sendMessage = async () => {
     if (!inputMessage.trim() || !sessionId) return;
-
     const userMessage: SmartBotMessage = {
       id: Date.now().toString(),
       role: 'USER' as const,
       content: inputMessage.trim(),
       created_at: new Date().toISOString()
     };
-
     setMessages(prev => [...prev, userMessage]);
     setInputMessage('');
     setIsLoading(true);
-
     try {
       const response = await smartBotAPI.sendMessage({
         session_id: sessionId,
         message: userMessage.content
       });
-      
       const botMessage: SmartBotMessage = {
         id: (Date.now() + 1).toString(),
         role: 'ASSISTANT' as const,
         content: response.data.message,
         created_at: new Date().toISOString()
       };
-
       setMessages(prev => [...prev, botMessage]);
-      
       if (response.data.is_completed) {
         setIsCompleted(true);
         if (response.data.analysis) {
@@ -212,10 +177,9 @@ ${resume.portfolio_url || 'Не указано'}
       setIsLoading(false);
     }
   };
-
   const renderAnalysisTab = () => (
     <div className="space-y-6">
-      {/* Общий балл */}
+      {}
       <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-semibold text-gray-900 text-lg flex items-center">
@@ -227,7 +191,6 @@ ${resume.portfolio_url || 'Не указано'}
             <span className="text-2xl font-bold text-blue-600">{analysis?.overall_score || 0}/100</span>
           </div>
         </div>
-        
         <div className="mb-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-gray-700">Релевантность профиля</span>
@@ -240,15 +203,13 @@ ${resume.portfolio_url || 'Не указано'}
             ></div>
           </div>
         </div>
-        
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <h4 className="font-medium text-blue-900 mb-2">Резюме анализа</h4>
           <p className="text-blue-800 text-sm leading-relaxed">
             {analysis?.summary || "Анализ кандидата в процессе..."}
           </p>
         </div>
-
-        {/* Рекомендация */}
+        {}
         {analysis?.recommendations && analysis.recommendations.length > 0 && (
           <div className={`mt-4 p-4 rounded-lg border ${
             analysis.overall_score >= 80 
@@ -282,8 +243,7 @@ ${resume.portfolio_url || 'Не указано'}
           </div>
         )}
       </div>
-
-      {/* История беседы с кандидатом */}
+      {}
       {messages.length > 0 && (
         <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
           <h3 className="font-semibold text-gray-900 text-lg mb-4 flex items-center">
@@ -313,8 +273,7 @@ ${resume.portfolio_url || 'Не указано'}
           </div>
         </div>
       )}
-
-      {/* Сильные стороны */}
+      {}
       {analysis?.strengths && analysis.strengths.length > 0 && (
         <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
           <h3 className="font-semibold text-green-700 text-lg mb-4 flex items-center">
@@ -333,8 +292,7 @@ ${resume.portfolio_url || 'Не указано'}
           </div>
         </div>
       )}
-
-      {/* Области для улучшения */}
+      {}
       {analysis?.weaknesses && analysis.weaknesses.length > 0 && (
         <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
           <h3 className="font-semibold text-orange-700 text-lg mb-4 flex items-center">
@@ -351,8 +309,7 @@ ${resume.portfolio_url || 'Не указано'}
           </div>
         </div>
       )}
-
-      {/* Статистика анализа */}
+      {}
       <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
         <h3 className="font-semibold text-gray-900 text-lg mb-4 flex items-center">
           <BarChart3 className="w-5 h-5 mr-3 text-indigo-600" />
@@ -385,7 +342,6 @@ ${resume.portfolio_url || 'Не указано'}
       </div>
     </div>
   );
-
   const renderChatTab = () => (
     <div className="space-y-4">
       {messages.map((message) => (
@@ -429,7 +385,6 @@ ${resume.portfolio_url || 'Не указано'}
       <div ref={messagesEndRef} />
     </div>
   );
-
   const renderResumeTab = () => {
     if (loadingResume) {
       return (
@@ -439,7 +394,6 @@ ${resume.portfolio_url || 'Не указано'}
         </div>
       );
     }
-
     if (!resume) {
       return (
         <div className="flex items-center justify-center h-64">
@@ -450,10 +404,9 @@ ${resume.portfolio_url || 'Не указано'}
         </div>
       );
     }
-
     return (
       <div className="space-y-6">
-        {/* Основная информация */}
+        {}
         <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center">
@@ -489,32 +442,28 @@ ${resume.portfolio_url || 'Не указано'}
             </div>
           </div>
         </div>
-
-        {/* Краткое описание */}
+        {}
         {resume.summary && (
           <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
             <h3 className="font-semibold text-gray-900 text-lg mb-4">О себе</h3>
             <p className="text-gray-700 leading-relaxed">{resume.summary}</p>
           </div>
         )}
-
-        {/* Опыт работы */}
+        {}
         {resume.experience && (
           <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
             <h3 className="font-semibold text-gray-900 text-lg mb-4">Опыт работы</h3>
             <div className="text-gray-700 leading-relaxed whitespace-pre-line">{resume.experience}</div>
           </div>
         )}
-
-        {/* Образование */}
+        {}
         {resume.education && (
           <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
             <h3 className="font-semibold text-gray-900 text-lg mb-4">Образование</h3>
             <div className="text-gray-700 leading-relaxed whitespace-pre-line">{resume.education}</div>
           </div>
         )}
-
-        {/* Навыки */}
+        {}
         {resume.skills && (
           <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
             <h3 className="font-semibold text-gray-900 text-lg mb-4">Навыки</h3>
@@ -530,16 +479,14 @@ ${resume.portfolio_url || 'Не указано'}
             </div>
           </div>
         )}
-
-        {/* Языки */}
+        {}
         {resume.languages && (
           <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
             <h3 className="font-semibold text-gray-900 text-lg mb-4">Языки</h3>
             <div className="text-gray-700 leading-relaxed">{resume.languages}</div>
           </div>
         )}
-
-        {/* Портфолио */}
+        {}
         {resume.portfolio_url && (
           <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
             <h3 className="font-semibold text-gray-900 text-lg mb-4">Портфолио</h3>
@@ -554,8 +501,7 @@ ${resume.portfolio_url || 'Не указано'}
             </a>
           </div>
         )}
-
-        {/* Дополнительная информация */}
+        {}
         <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
           <h3 className="font-semibold text-gray-900 text-lg mb-4">Дополнительная информация</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
@@ -582,7 +528,6 @@ ${resume.portfolio_url || 'Не указано'}
       </div>
     );
   };
-
   if (isMinimized) {
     return (
       <div className="fixed bottom-4 right-4 z-50">
@@ -595,30 +540,25 @@ ${resume.portfolio_url || 'Не указано'}
       </div>
     );
   }
-
   return (
     <>
-      {/* Overlay for mobile/tablet */}
+      {}
       <div 
         className="fixed inset-0 bg-black bg-opacity-25 z-40 lg:hidden"
         onClick={onClose}
       />
-      
-      {/* Side Panel */}
+      {}
       <div className={`fixed top-0 right-0 h-full bg-white shadow-2xl border-l border-gray-200 flex flex-col z-50 transition-all duration-300 ease-in-out ${
         isCollapsed ? 'w-12' : 'w-full lg:w-1/3'
       }`}>
-        
-        {/* Collapse/Expand Button */}
+        {}
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
           className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-full bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-l-lg shadow-lg transition-colors z-10"
         >
           {isCollapsed ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
         </button>
-
         {isCollapsed ? (
-          /* Collapsed State */
           <div className="flex flex-col items-center py-4 space-y-4">
             <Bot className="w-6 h-6 text-blue-600" />
             <div className="writing-vertical text-xs text-gray-600 transform rotate-90 whitespace-nowrap">
@@ -626,9 +566,8 @@ ${resume.portfolio_url || 'Не указано'}
             </div>
           </div>
         ) : (
-          /* Expanded State */
           <>
-            {/* Header */}
+            {}
             <div className="bg-blue-600 text-white p-4 flex items-center justify-between border-b">
               <div className="flex items-center space-x-3">
                 <Bot className="w-6 h-6" />
@@ -657,11 +596,10 @@ ${resume.portfolio_url || 'Не указано'}
                 </button>
               </div>
             </div>
-
-            {/* Tab Navigation */}
+            {}
             <div className="bg-white border-b border-gray-200">
               <nav className="flex">
-                {/* Показываем вкладку "Анализ" только работодателям */}
+                {}
                 {isEmployer && (
                   <button
                     onClick={() => setActiveTab('analysis')}
@@ -691,7 +629,7 @@ ${resume.portfolio_url || 'Не указано'}
                     </span>
                   )}
                 </button>
-                {/* Показываем вкладку "Резюме" только работодателям */}
+                {}
                 {isEmployer && (
                   <button
                     onClick={() => setActiveTab('resume')}
@@ -707,15 +645,13 @@ ${resume.portfolio_url || 'Не указано'}
                 )}
               </nav>
             </div>
-
-            {/* Tab Content */}
+            {}
             <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
               {activeTab === 'analysis' && isEmployer && renderAnalysisTab()}
               {activeTab === 'chat' && renderChatTab()}
               {activeTab === 'resume' && isEmployer && renderResumeTab()}
             </div>
-
-            {/* Input Area - только для вкладки чата */}
+            {}
             {activeTab === 'chat' && !isCompleted && (
               <div className="p-4 border-t border-gray-200 bg-white">
                 <div className="flex space-x-3">
@@ -738,8 +674,7 @@ ${resume.portfolio_url || 'Не указано'}
                 </div>
               </div>
             )}
-
-            {/* Completion Status */}
+            {}
             {activeTab === 'chat' && isCompleted && (
               <div className="p-4 border-t border-gray-200 bg-gradient-to-r from-green-50 to-emerald-50">
                 <div className="text-center">
@@ -763,6 +698,5 @@ ${resume.portfolio_url || 'Не указано'}
     </>
   );
 };
-
 export default SmartBotWidget;
-export { SmartBotWidget };
+export { SmartBotWidget };

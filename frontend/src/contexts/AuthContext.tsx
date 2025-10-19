@@ -1,9 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { type User, authAPI } from '../services/api';
-
 interface AuthContextType {
   user: User | null;
+  token: string | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (data: {
@@ -17,9 +17,7 @@ interface AuthContextType {
   isEmployer: boolean;
   isJobSeeker: boolean;
 }
-
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
@@ -27,40 +25,37 @@ export const useAuth = () => {
   }
   return context;
 };
-
 interface AuthProviderProps {
   children: ReactNode;
 }
-
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-
   useEffect(() => {
     const initAuth = async () => {
-      const token = localStorage.getItem('token');
-      if (token) {
+      const storedToken = localStorage.getItem('token');
+      if (storedToken) {
+        setToken(storedToken);
         try {
           const response = await authAPI.getMe();
           setUser(response.data);
         } catch (error) {
           localStorage.removeItem('token');
           localStorage.removeItem('user');
+          setToken(null);
         }
       }
       setLoading(false);
     };
-
     initAuth();
   }, []);
-
   const login = async (email: string, password: string) => {
     try {
       const response = await authAPI.login({ email, password });
       const { access_token } = response.data;
-      
       localStorage.setItem('token', access_token);
-      
+      setToken(access_token);
       const userResponse = await authAPI.getMe();
       setUser(userResponse.data);
       localStorage.setItem('user', JSON.stringify(userResponse.data));
@@ -68,7 +63,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       throw error;
     }
   };
-
   const register = async (data: {
     email: string;
     password: string;
@@ -83,18 +77,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       throw error;
     }
   };
-
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);
+    setToken(null);
   };
-
   const isEmployer = user?.user_type === 'employer';
   const isJobSeeker = user?.user_type === 'job_seeker';
-
   const value = {
     user,
+    token,
     loading,
     login,
     register,
@@ -102,6 +95,5 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isEmployer,
     isJobSeeker,
   };
-
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
+};

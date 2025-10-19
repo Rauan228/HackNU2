@@ -4,6 +4,7 @@ import asyncio
 import json
 
 class WSManager:
+
     def __init__(self) -> None:
         self.job_connections: Dict[int, Set[WebSocket]] = {}
         self.session_connections: Dict[str, Set[WebSocket]] = {}
@@ -34,22 +35,18 @@ class WSManager:
                     self.session_connections.pop(session_id, None)
 
     async def broadcast_job(self, job_id: int, payload: dict) -> None:
-        # Send to all connections subscribed to this job
         conns = list(self.job_connections.get(job_id, set()))
         for ws in conns:
             try:
                 await ws.send_json(payload)
             except Exception:
-                # best-effort cleanup
                 await self.disconnect_job(job_id, ws)
 
     async def broadcast_session(self, session_id: str, payload: dict) -> None:
-        # Send to all connections subscribed to this session
         conns = list(self.session_connections.get(session_id, set()))
         for ws in conns:
             try:
                 await ws.send_json(payload)
             except Exception:
                 await self.disconnect_session(session_id, ws)
-
 ws_manager = WSManager()

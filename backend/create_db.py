@@ -6,36 +6,17 @@ from models.resumes import Resume
 from models.applications import JobApplication
 
 def create_database():
-    """Создает базу данных и все таблицы"""
-    
-    # Создаем все таблицы
-    print("Создание таблиц...")
+    print('Создание таблиц...')
     Base.metadata.create_all(bind=engine)
-    print("Таблицы созданы успешно!")
-    
-    # Проверяем созданные таблицы
+    print('Таблицы созданы успешно!')
     with engine.connect() as conn:
-        result = conn.execute(text("""
-            SELECT table_name 
-            FROM information_schema.tables 
-            WHERE table_schema = 'public'
-            ORDER BY table_name;
-        """))
-        
-        print("\nСозданные таблицы:")
+        result = conn.execute(text("\n            SELECT table_name \n            FROM information_schema.tables \n            WHERE table_schema = 'public'\n            ORDER BY table_name;\n        "))
+        print('\nСозданные таблицы:')
         for row in result:
-            print(f"  - {row[0]}")
-        
-        # Проверяем ограничения для user_type
-        constraints = conn.execute(text("""
-            SELECT constraint_name, check_clause 
-            FROM information_schema.check_constraints 
-            WHERE constraint_name LIKE '%user_type%';
-        """))
-        
-        print("\nОграничения для user_type:")
+            print(f'  - {row[0]}')
+        constraints = conn.execute(text("\n            SELECT constraint_name, check_clause \n            FROM information_schema.check_constraints \n            WHERE constraint_name LIKE '%user_type%';\n        "))
+        print('\nОграничения для user_type:')
         for row in constraints:
-            print(f"  {row[0]}: {row[1]}")
-
-if __name__ == "__main__":
+            print(f'  {row[0]}: {row[1]}')
+if __name__ == '__main__':
     create_database()

@@ -2,23 +2,20 @@ from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
 
-
 class JobBase(BaseModel):
     title: str
     description: str
     requirements: Optional[str] = None
     salary_min: Optional[float] = None
     salary_max: Optional[float] = None
-    salary_currency: Optional[str] = "KZT"
+    salary_currency: Optional[str] = 'KZT'
     location: Optional[str] = None
     employment_type: Optional[str] = None
     experience_level: Optional[str] = None
     company_name: str
 
-
 class JobCreate(JobBase):
     pass
-
 
 class JobUpdate(BaseModel):
     title: Optional[str] = None
@@ -33,7 +30,6 @@ class JobUpdate(BaseModel):
     company_name: Optional[str] = None
     is_active: Optional[bool] = None
 
-
 class JobResponse(JobBase):
     id: int
     is_active: bool
@@ -43,7 +39,6 @@ class JobResponse(JobBase):
 
     class Config:
         from_attributes = True
-
 
 class JobListResponse(BaseModel):
     jobs: List[JobResponse]

@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button, Badge, Card, CardBody, CardHeader } from '../components/ui';
 import { applicationsAPI, resumesAPI } from '../services/api';
-
-
 interface Resume {
   id: string;
   title: string;
@@ -16,7 +14,6 @@ interface Resume {
   updatedAt: string;
   isActive: boolean;
 }
-
 interface Application {
   id: string;
   jobId: string;
@@ -26,7 +23,6 @@ interface Application {
   status: 'pending' | 'viewed' | 'shortlisted' | 'rejected' | 'interview';
   coverLetter: string;
 }
-
 interface JobRecommendation {
   id: string;
   title: string;
@@ -37,7 +33,6 @@ interface JobRecommendation {
   matchPercentage: number;
   postedDate: string;
 }
-
 const applicationStatusLabels: Record<string, string> = {
   'pending': 'На рассмотрении',
   'viewed': 'Просмотрено',
@@ -45,7 +40,6 @@ const applicationStatusLabels: Record<string, string> = {
   'rejected': 'Отклонено',
   'interview': 'Приглашение на интервью',
 };
-
 const applicationStatusColors: Record<string, string> = {
   'pending': 'warning',
   'viewed': 'secondary',
@@ -53,21 +47,16 @@ const applicationStatusColors: Record<string, string> = {
   'rejected': 'danger',
   'interview': 'primary',
 };
-
 export const JobSeekerProfile: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'resumes' | 'applications' | 'recommendations' | 'profile'>('resumes');
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
   const [recommendations, setRecommendations] = useState<JobRecommendation[]>([]);
   const [loading, setLoading] = useState(true);
-
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Загружаем реальные данные откликов
         const applicationsResponse = await applicationsAPI.getApplications();
-        
-        // Преобразуем данные из API в формат компонента
         const transformedApplications: Application[] = applicationsResponse.data.map(app => ({
           id: app.id.toString(),
           jobId: app.job_id.toString(),
@@ -80,16 +69,12 @@ export const JobSeekerProfile: React.FC = () => {
                   app.status === 'rejected' ? 'rejected' : 'pending',
           coverLetter: app.cover_letter || '',
         }));
-        
-        // Загружаем реальные данные резюме
         const resumesResponse = await resumesAPI.getResumes();
-        
-        // Преобразуем данные из API в формат компонента
         const transformedResumes: Resume[] = resumesResponse.data.map(resume => ({
           id: resume.id.toString(),
           title: resume.title || 'Резюме',
           position: resume.desired_position || 'Не указано',
-          experience: '3-5', // Можно извлечь из experience поля
+          experience: '3-5', 
           location: resume.location || 'Не указано',
           salary: resume.desired_salary ? Number(resume.desired_salary) : undefined,
           skills: resume.skills ? resume.skills.split(', ').filter(skill => skill.trim()) : [],
@@ -97,7 +82,6 @@ export const JobSeekerProfile: React.FC = () => {
           updatedAt: new Date(resume.updated_at).toLocaleDateString('ru-RU'),
           isActive: resume.is_public || false,
         }));
-
         const mockRecommendations: JobRecommendation[] = [
           {
             id: '1',
@@ -130,27 +114,22 @@ export const JobSeekerProfile: React.FC = () => {
             postedDate: '2024-01-15',
           },
         ];
-
         setResumes(transformedResumes);
         setApplications(transformedApplications);
         setRecommendations(mockRecommendations);
       } catch (error) {
         console.error('Ошибка при загрузке данных:', error);
-        // В случае ошибки устанавливаем пустые массивы
         setApplications([]);
       } finally {
         setLoading(false);
       }
     };
-
     fetchData();
   }, []);
-
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('ru-RU');
   };
-
   const formatSalary = (min?: number, max?: number) => {
     if (!min && !max) return 'Не указана';
     if (min && max) return `${min.toLocaleString()} - ${max.toLocaleString()} ₸`;
@@ -158,12 +137,8 @@ export const JobSeekerProfile: React.FC = () => {
     if (max) return `до ${max.toLocaleString()} ₸`;
     return 'Не указана';
   };
-
   const handleResumeToggle = async (resumeId: string) => {
     try {
-      // TODO: Отправить запрос на сервер
-      // await fetch(`/api/resumes/${resumeId}/toggle`, { method: 'PATCH' });
-
       setResumes(resumes.map(resume => 
         resume.id === resumeId 
           ? { ...resume, isActive: !resume.isActive }
@@ -173,7 +148,6 @@ export const JobSeekerProfile: React.FC = () => {
       console.error('Ошибка при изменении статуса резюме:', error);
     }
   };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-secondary-50 flex items-center justify-center">
@@ -184,11 +158,10 @@ export const JobSeekerProfile: React.FC = () => {
       </div>
     );
   }
-
   return (
     <div className="min-h-screen bg-secondary-50">
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Заголовок */}
+        {}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             Личный кабинет
@@ -197,8 +170,7 @@ export const JobSeekerProfile: React.FC = () => {
             Управляйте резюме, отслеживайте отклики и находите подходящие вакансии
           </p>
         </div>
-
-        {/* Статистика */}
+        {}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card>
             <CardBody>
@@ -219,7 +191,6 @@ export const JobSeekerProfile: React.FC = () => {
               </div>
             </CardBody>
           </Card>
-
           <Card>
             <CardBody>
               <div className="flex items-center">
@@ -239,7 +210,6 @@ export const JobSeekerProfile: React.FC = () => {
               </div>
             </CardBody>
           </Card>
-
           <Card>
             <CardBody>
               <div className="flex items-center">
@@ -259,7 +229,6 @@ export const JobSeekerProfile: React.FC = () => {
               </div>
             </CardBody>
           </Card>
-
           <Card>
             <CardBody>
               <div className="flex items-center">
@@ -280,8 +249,7 @@ export const JobSeekerProfile: React.FC = () => {
             </CardBody>
           </Card>
         </div>
-
-        {/* Навигация по табам */}
+        {}
         <div className="mb-6">
           <div className="border-b border-secondary-200">
             <nav className="-mb-px flex space-x-8">
@@ -338,8 +306,7 @@ export const JobSeekerProfile: React.FC = () => {
             </nav>
           </div>
         </div>
-
-        {/* Контент табов */}
+        {}
         {activeTab === 'resumes' && (
           <div className="space-y-6">
             <div className="flex justify-between items-center">
@@ -353,7 +320,6 @@ export const JobSeekerProfile: React.FC = () => {
                 </Button>
               </Link>
             </div>
-
             <div className="grid gap-6">
               {resumes.map((resume) => (
                 <Card key={resume.id}>
@@ -382,7 +348,6 @@ export const JobSeekerProfile: React.FC = () => {
                             </Badge>
                           </div>
                         </div>
-
                         <div className="mb-4">
                           <h4 className="font-medium text-gray-900 mb-2">Навыки:</h4>
                           <div className="flex flex-wrap gap-2">
@@ -393,14 +358,12 @@ export const JobSeekerProfile: React.FC = () => {
                             ))}
                           </div>
                         </div>
-
                         <div className="flex items-center justify-between">
                           <div className="text-sm text-secondary-600">
                             <span>Создано: {formatDate(resume.createdAt)}</span>
                             <span className="mx-2">•</span>
                             <span>Обновлено: {formatDate(resume.updatedAt)}</span>
                           </div>
-
                           <div className="flex items-center space-x-2">
                             <Button
                               variant="outline"
@@ -422,7 +385,6 @@ export const JobSeekerProfile: React.FC = () => {
                   </CardBody>
                 </Card>
               ))}
-
               {resumes.length === 0 && (
                 <Card>
                   <CardBody>
@@ -446,11 +408,9 @@ export const JobSeekerProfile: React.FC = () => {
             </div>
           </div>
         )}
-
         {activeTab === 'applications' && (
           <div className="space-y-6">
             <h2 className="text-xl font-semibold text-gray-900">История откликов</h2>
-
             <div className="grid gap-6">
               {applications.map((application) => (
                 <Card key={application.id}>
@@ -475,14 +435,12 @@ export const JobSeekerProfile: React.FC = () => {
                             </p>
                           </div>
                         </div>
-
                         <div className="mb-4">
                           <h4 className="font-medium text-gray-900 mb-1">Сопроводительное письмо:</h4>
                           <p className="text-secondary-700 line-clamp-2">
                             {application.coverLetter}
                           </p>
                         </div>
-
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-4">
                             {application.status === 'interview' && (
@@ -494,7 +452,6 @@ export const JobSeekerProfile: React.FC = () => {
                               </div>
                             )}
                           </div>
-
                           <div className="flex items-center space-x-2">
                             <Link to={`/jobs/${application.jobId}`}>
                               <Button variant="outline" size="sm">
@@ -508,7 +465,6 @@ export const JobSeekerProfile: React.FC = () => {
                   </CardBody>
                 </Card>
               ))}
-
               {applications.length === 0 && (
                 <Card>
                   <CardBody>
@@ -532,11 +488,9 @@ export const JobSeekerProfile: React.FC = () => {
             </div>
           </div>
         )}
-
         {activeTab === 'recommendations' && (
           <div className="space-y-6">
             <h2 className="text-xl font-semibold text-gray-900">Рекомендуемые вакансии</h2>
-
             <div className="grid gap-6">
               {recommendations.map((job) => (
                 <Card key={job.id} className="hover:shadow-lg transition-shadow duration-200">
@@ -576,18 +530,15 @@ export const JobSeekerProfile: React.FC = () => {
                             </p>
                           </div>
                         </div>
-
                         <div className="mb-4">
                           <p className="text-secondary-700">
                             {formatSalary(job.salaryMin, job.salaryMax)}
                           </p>
                         </div>
-
                         <div className="flex items-center justify-between">
                           <div className="text-sm text-success-600">
                             Совпадение: {job.matchPercentage}% - отличная вакансия для вас!
                           </div>
-
                           <div className="flex items-center space-x-2">
                             <Link to={`/jobs/${job.id}`}>
                               <Button variant="outline" size="sm">
@@ -604,7 +555,6 @@ export const JobSeekerProfile: React.FC = () => {
                   </CardBody>
                 </Card>
               ))}
-
               {recommendations.length === 0 && (
                 <Card>
                   <CardBody>
@@ -628,11 +578,9 @@ export const JobSeekerProfile: React.FC = () => {
             </div>
           </div>
         )}
-
         {activeTab === 'profile' && (
           <div className="space-y-6">
             <h2 className="text-xl font-semibold text-gray-900">Настройки профиля</h2>
-
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
@@ -674,7 +622,6 @@ export const JobSeekerProfile: React.FC = () => {
                   </div>
                 </CardBody>
               </Card>
-
               <Card>
                 <CardHeader>
                   <h3 className="text-lg font-semibold">Уведомления</h3>
@@ -718,4 +665,4 @@ export const JobSeekerProfile: React.FC = () => {
       </div>
     </div>
   );
-};
+};

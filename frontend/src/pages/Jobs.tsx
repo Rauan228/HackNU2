@@ -6,7 +6,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { JobCard } from '../components/job/JobCard';
 import { Search, MapPin, Plus } from 'lucide-react';
 import SmartBotWidget from '../components/SmartBotWidget';
-import { Loader } from '../components/ui';
 
 const Jobs: React.FC = () => {
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -68,7 +67,7 @@ const Jobs: React.FC = () => {
   const handleApply = async (jobId: number) => {
     setIsApplying(true);
     try {
-      // Получаем список резюме пользователя
+      
       const resumesResponse = await resumesAPI.getResumes();
       
       if (!resumesResponse.data || resumesResponse.data.length === 0) {
@@ -77,7 +76,7 @@ const Jobs: React.FC = () => {
         return;
       }
       
-      // Используем первое доступное резюме
+      
       const firstResume = resumesResponse.data[0];
       
       const applicationData = {
@@ -89,13 +88,13 @@ const Jobs: React.FC = () => {
       const response = await applicationsAPI.createApplication(applicationData);
       console.log('Отклик успешно отправлен на вакансию:', jobId);
       
-      // Открываем SmartBot виджет с ID заявки
+      
       if (response.data && response.data.id) {
         setSmartBotApplicationId(response.data.id);
         setShowSmartBot(true);
       }
       
-      // Обновляем список вакансий чтобы показать что отклик отправлен
+      
       fetchJobs(1, true);
     } catch (error) {
       console.error('Ошибка при отправке отклика:', error);
@@ -113,7 +112,7 @@ const Jobs: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Overlay loader while applying */}
+      {}
       {isApplying && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white rounded-lg shadow p-6 flex items-center space-x-3">
@@ -125,7 +124,7 @@ const Jobs: React.FC = () => {
           </div>
         </div>
       )}
-      {/* Header */}
+      {}
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900">Вакансии</h1>
         {isEmployer && (
@@ -139,7 +138,7 @@ const Jobs: React.FC = () => {
         )}
       </div>
 
-      {/* Search and Filters */}
+      {}
       <div className="bg-white p-6 rounded-lg shadow">
         <form onSubmit={handleSearch} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -187,14 +186,14 @@ const Jobs: React.FC = () => {
         </form>
       </div>
 
-      {/* Error */}
+      {}
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-md p-4">
           <p className="text-red-800">{error}</p>
         </div>
       )}
 
-      {/* Jobs Grid */}
+      {}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {jobs.map((job) => (
           <JobCard
@@ -207,7 +206,7 @@ const Jobs: React.FC = () => {
         ))}
       </div>
 
-      {/* Loading */}
+      {}
       {loading && (
         <div className="text-center py-8">
           <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -215,7 +214,7 @@ const Jobs: React.FC = () => {
         </div>
       )}
 
-      {/* Load More */}
+      {}
       {!loading && hasMore && jobs.length > 0 && (
         <div className="text-center">
           <button
@@ -227,7 +226,7 @@ const Jobs: React.FC = () => {
         </div>
       )}
 
-      {/* No Jobs */}
+      {}
       {!loading && jobs.length === 0 && (
         <div className="text-center py-12">
           <p className="text-gray-500 text-lg">Вакансии не найдены</p>
@@ -235,7 +234,7 @@ const Jobs: React.FC = () => {
         </div>
       )}
 
-      {/* SmartBot Widget */}
+      {}
     {showSmartBot && smartBotApplicationId && (
       <SmartBotWidget
         applicationId={smartBotApplicationId}
@@ -244,6 +243,9 @@ const Jobs: React.FC = () => {
         onClose={() => {
           setShowSmartBot(false);
           setSmartBotApplicationId(null);
+        }}
+        onOpenDetailedReport={(applicationId) => {
+          console.log('Запрошен подробный отчет для заявки', applicationId);
         }}
       />
     )}

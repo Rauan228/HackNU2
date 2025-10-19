@@ -1,13 +1,11 @@
 import React from 'react';
 import { cn } from '../../utils/cn';
-
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'success' | 'danger' | 'outline';
   size?: 'sm' | 'md' | 'lg';
   loading?: boolean;
   children: React.ReactNode;
 }
-
 export const Button: React.FC<ButtonProps> = ({
   variant = 'primary',
   size = 'md',
@@ -18,7 +16,6 @@ export const Button: React.FC<ButtonProps> = ({
   ...props
 }) => {
   const baseClasses = 'btn';
-  
   const variantClasses = {
     primary: 'btn-primary',
     secondary: 'btn-secondary',
@@ -26,13 +23,11 @@ export const Button: React.FC<ButtonProps> = ({
     danger: 'btn-danger',
     outline: 'btn-outline',
   };
-  
   const sizeClasses = {
     sm: 'btn-sm',
     md: '',
     lg: 'btn-lg',
   };
-
   return (
     <button
       className={cn(
@@ -50,4 +45,4 @@ export const Button: React.FC<ButtonProps> = ({
       {children}
     </button>
   );
-};
+};

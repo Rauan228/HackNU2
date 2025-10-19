@@ -2,7 +2,6 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
 
-
 class ResumeBase(BaseModel):
     title: str
     summary: Optional[str] = None
@@ -16,10 +15,8 @@ class ResumeBase(BaseModel):
     location: Optional[str] = None
     is_public: Optional[bool] = True
 
-
 class ResumeCreate(ResumeBase):
     pass
-
 
 class ResumeUpdate(BaseModel):
     title: Optional[str] = None
@@ -33,7 +30,6 @@ class ResumeUpdate(BaseModel):
     desired_salary: Optional[float] = None
     location: Optional[str] = None
     is_public: Optional[bool] = None
-
 
 class ResumeResponse(ResumeBase):
     id: int

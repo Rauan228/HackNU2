@@ -11,7 +11,6 @@ import CreateResume from './pages/CreateResume';
 import JobDetails from './pages/JobDetails';
 import EmployerDashboard from './pages/EmployerDashboard';
 import { JobSeekerProfile } from './pages/JobSeekerProfile';
-
 function App() {
   return (
     <AuthProvider>
@@ -36,5 +35,4 @@ function App() {
     </AuthProvider>
   );
 }
-
 export default App;

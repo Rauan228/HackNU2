@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { JobForm } from '../components/forms/JobForm';
 import { jobsAPI } from '../services/api';
-
 interface JobFormData {
   title: string;
   description: string;
@@ -15,18 +14,14 @@ interface JobFormData {
   employmentType: string;
   experience: string;
 }
-
 export const CreateJob: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
   const handleSubmit = async (data: JobFormData) => {
     setLoading(true);
     setError('');
-    
     try {
-      // Преобразуем данные формы в формат API
       const jobData = {
         title: data.title,
         description: data.description,
@@ -36,12 +31,9 @@ export const CreateJob: React.FC = () => {
         location: data.location || undefined,
         employment_type: data.employmentType || undefined,
         experience_level: data.experience || undefined,
-        company_name: 'Моя компания' // Временное значение, можно будет добавить в форму позже
+        company_name: 'Моя компания' 
       };
-
       await jobsAPI.createJob(jobData);
-      
-      // После успешного создания перенаправляем на дашборд работодателя
       navigate('/employer-dashboard');
     } catch (error: any) {
       console.error('Ошибка при создании вакансии:', error);
@@ -50,7 +42,6 @@ export const CreateJob: React.FC = () => {
       setLoading(false);
     }
   };
-
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4">
@@ -64,5 +55,4 @@ export const CreateJob: React.FC = () => {
     </div>
   );
 };
-
-export default CreateJob;
+export default CreateJob;

@@ -3,20 +3,16 @@ from typing import Optional
 from datetime import datetime
 from models.applications import ApplicationStatus
 
-
 class ApplicationBase(BaseModel):
     cover_letter: Optional[str] = None
-
 
 class ApplicationCreate(ApplicationBase):
     job_id: int
     resume_id: int
 
-
 class ApplicationUpdate(BaseModel):
     cover_letter: Optional[str] = None
     status: Optional[ApplicationStatus] = None
-
 
 class ApplicationResponse(ApplicationBase):
     id: int
@@ -29,7 +25,6 @@ class ApplicationResponse(ApplicationBase):
 
     class Config:
         from_attributes = True
-
 
 class ApplicationWithDetailsResponse(ApplicationResponse):
     job_title: str

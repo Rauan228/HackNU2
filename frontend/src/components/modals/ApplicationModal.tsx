@@ -1,21 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardBody } from '../ui';
 import { ApplicationForm } from '../forms/ApplicationForm';
-
 interface Job {
   id: string;
   title: string;
   company: string;
   location: string;
 }
-
 interface ApplicationModalProps {
   isOpen: boolean;
   onClose: () => void;
   job: Job | null;
   onSubmit: (data: { resumeId: string; coverLetter: string }) => Promise<void>;
 }
-
 export const ApplicationModal: React.FC<ApplicationModalProps> = ({
   isOpen,
   onClose,
@@ -23,19 +20,16 @@ export const ApplicationModal: React.FC<ApplicationModalProps> = ({
   onSubmit,
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
-
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'unset';
     }
-
     return () => {
       document.body.style.overflow = 'unset';
     };
   }, [isOpen]);
-
   const handleSubmit = async (data: { resumeId: string; coverLetter: string }) => {
     setIsSubmitting(true);
     try {
@@ -47,15 +41,12 @@ export const ApplicationModal: React.FC<ApplicationModalProps> = ({
       setIsSubmitting(false);
     }
   };
-
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
       onClose();
     }
   };
-
   if (!isOpen || !job) return null;
-
   return (
     <div 
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
@@ -81,7 +72,6 @@ export const ApplicationModal: React.FC<ApplicationModalProps> = ({
             </svg>
           </button>
         </div>
-
         <div className="p-6">
           <Card className="mb-6">
             <CardBody>
@@ -107,7 +97,6 @@ export const ApplicationModal: React.FC<ApplicationModalProps> = ({
               </div>
             </CardBody>
           </Card>
-
           <ApplicationForm
             onSubmit={handleSubmit}
             isSubmitting={isSubmitting}
@@ -117,4 +106,4 @@ export const ApplicationModal: React.FC<ApplicationModalProps> = ({
       </div>
     </div>
   );
-};
+};

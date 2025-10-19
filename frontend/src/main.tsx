@@ -4,7 +4,7 @@ import './index.css'
 import App from './App.tsx'
 import faviconUrl from './assets/image.png'
 
-// Ensure favicon uses the provided image everywhere
+
 const setFavicon = () => {
   const head = document.head || document.getElementsByTagName('head')[0]
   let link = document.querySelector<HTMLLinkElement>("link[rel='icon']")

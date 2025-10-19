@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Eye, EyeOff } from 'lucide-react';
-
 const Register: React.FC = () => {
   const [formData, setFormData] = useState({
     email: '',
@@ -16,33 +15,26 @@ const Register: React.FC = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  
   const { register } = useAuth();
   const navigate = useNavigate();
-
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
     });
   };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
     if (formData.password !== formData.confirmPassword) {
       setError('Пароли не совпадают');
       return;
     }
-
     if (formData.password.length < 6) {
       setError('Пароль должен содержать минимум 6 символов');
       return;
     }
-
     setLoading(true);
-
     try {
       await register({
         email: formData.email,
@@ -58,7 +50,6 @@ const Register: React.FC = () => {
       setLoading(false);
     }
   };
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
@@ -99,7 +90,6 @@ const Register: React.FC = () => {
                 <option value="employer">Работодатель</option>
               </select>
             </div>
-
             <div>
               <label htmlFor="fullName" className="block text-sm font-medium text-gray-700">
                 Полное имя
@@ -115,7 +105,6 @@ const Register: React.FC = () => {
                 onChange={handleChange}
               />
             </div>
-
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                 Email
@@ -132,7 +121,6 @@ const Register: React.FC = () => {
                 onChange={handleChange}
               />
             </div>
-
             <div>
               <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
                 Телефон
@@ -147,7 +135,6 @@ const Register: React.FC = () => {
                 onChange={handleChange}
               />
             </div>
-
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                 Пароль
@@ -177,7 +164,6 @@ const Register: React.FC = () => {
                 </button>
               </div>
             </div>
-
             <div>
               <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
                 Подтвердите пароль
@@ -208,7 +194,6 @@ const Register: React.FC = () => {
               </div>
             </div>
           </div>
-
           <div>
             <button
               type="submit"
@@ -218,7 +203,6 @@ const Register: React.FC = () => {
               {loading ? 'Регистрация...' : 'Зарегистрироваться'}
             </button>
           </div>
-
           <div className="text-center">
             <p className="text-sm text-gray-600">
               Уже есть аккаунт?{' '}
@@ -235,5 +219,4 @@ const Register: React.FC = () => {
     </div>
   );
 };
-
-export default Register;
+export default Register;

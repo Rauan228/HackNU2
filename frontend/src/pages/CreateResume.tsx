@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ResumeForm } from '../components/forms/ResumeForm';
 import { resumesAPI } from '../services/api';
-
 interface Experience {
   id: string;
   company: string;
@@ -12,7 +11,6 @@ interface Experience {
   current: boolean;
   description: string;
 }
-
 interface Education {
   id: string;
   institution: string;
@@ -22,7 +20,6 @@ interface Education {
   endDate: string;
   current: boolean;
 }
-
 interface ResumeFormData {
   firstName: string;
   lastName: string;
@@ -37,15 +34,12 @@ interface ResumeFormData {
   skills: string[];
   languages: string[];
 }
-
 export const CreateResume: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-
   const handleSubmit = async (data: ResumeFormData) => {
     setLoading(true);
     try {
-      // Преобразуем данные формы в формат API
       const resumeData = {
         title: data.desiredPosition || 'Резюме',
         summary: data.summary,
@@ -62,10 +56,7 @@ export const CreateResume: React.FC = () => {
         location: data.location,
         is_public: true
       };
-
       await resumesAPI.createResume(resumeData);
-      
-      // После успешного создания перенаправляем в личный кабинет
       navigate('/dashboard');
     } catch (error) {
       console.error('Ошибка при создании резюме:', error);
@@ -73,7 +64,6 @@ export const CreateResume: React.FC = () => {
       setLoading(false);
     }
   };
-
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4">
@@ -83,11 +73,9 @@ export const CreateResume: React.FC = () => {
             Заполните информацию о себе, чтобы создать профессиональное резюме
           </p>
         </div>
-        
         <ResumeForm onSubmit={handleSubmit} loading={loading} />
       </div>
     </div>
   );
 };
-
-export default CreateResume;
+export default CreateResume;

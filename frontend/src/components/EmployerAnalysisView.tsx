@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardBody, CardHeader, Button, Badge } from './ui';
-import api, { smartBotAPI } from '../services/api';
+import { smartBotAPI } from '../services/api';
 import type { EmployerAnalysisView as EmployerAnalysisData } from '../services/api';
+import { useWebSocket, type WebSocketMessage } from '../hooks/useWebSocket';
 
 interface EmployerAnalysisViewProps {
   applicationId: number;
@@ -16,9 +17,7 @@ export const EmployerAnalysisView: React.FC<EmployerAnalysisViewProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'summary' | 'chat' | 'details'>('summary');
-  const [wsStatus, setWsStatus] = useState<'idle' | 'connecting' | 'connected' | 'closed' | 'error'>('idle');
-  const [liveMessages, setLiveMessages] = useState<Array<{ id?: string; role: 'USER' | 'ASSISTANT' | 'SYSTEM'; content: string; created_at: string }>>([]);
-  const wsRef = useRef<WebSocket | null>(null);
+  const [liveMessages, setLiveMessages] = useState<any[]>([]);
 
   useEffect(() => {
     fetchAnalysis();
@@ -27,16 +26,37 @@ export const EmployerAnalysisView: React.FC<EmployerAnalysisViewProps> = ({
   const fetchAnalysis = async () => {
     try {
       setLoading(true);
-      setError(null);
       const response = await smartBotAPI.getEmployerApplicationAnalysis(applicationId);
       setAnalysis(response.data);
+      setError(null);
     } catch (err: any) {
-      console.error('Error fetching analysis:', err);
       setError(err.response?.data?.detail || 'Ошибка при загрузке анализа');
     } finally {
       setLoading(false);
     }
   };
+
+  
+  const { isConnected, connectionStatus, connect, disconnect } = useWebSocket({
+    sessionId: analysis?.session_id,
+    onMessage: (message: WebSocketMessage) => {
+      if (message.type === 'chat_message') {
+        setLiveMessages(prev => [...prev, message.data]);
+      } else if (message.type === 'session_complete') {
+        
+        fetchAnalysis();
+      }
+    },
+    onConnect: () => {
+      console.log('WebSocket connected for session:', analysis?.session_id);
+    },
+    onDisconnect: () => {
+      console.log('WebSocket disconnected');
+    },
+    onError: (error) => {
+      console.error('WebSocket error:', error);
+    }
+  });
 
   const getScoreColor = (score?: number) => {
     if (!score) return 'secondary';
@@ -182,7 +202,7 @@ export const EmployerAnalysisView: React.FC<EmployerAnalysisViewProps> = ({
                   : 'border-transparent text-secondary-500 hover:text-secondary-700 hover:border-secondary-300'
               }`}
             >
-              История чата ({(analysis.chat_messages.length + liveMessages.length)})
+              История чата ({(analysis.chat_messages?.length || 0) + liveMessages.length})
             </button>
             <button
               onClick={() => setActiveTab('details')}
@@ -200,7 +220,7 @@ export const EmployerAnalysisView: React.FC<EmployerAnalysisViewProps> = ({
         <CardBody className="overflow-y-auto max-h-[60vh]">
           {activeTab === 'summary' && (
             <div className="space-y-6">
-              {/* Основные метрики */}
+              {}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Card>
                   <CardBody>
@@ -246,7 +266,7 @@ export const EmployerAnalysisView: React.FC<EmployerAnalysisViewProps> = ({
                 </Card>
               </div>
 
-              {/* Сводка */}
+              {}
               {analysis.summary && (
                 <Card>
                   <CardHeader>
@@ -258,7 +278,7 @@ export const EmployerAnalysisView: React.FC<EmployerAnalysisViewProps> = ({
                 </Card>
               )}
 
-              {/* Сильные стороны и проблемы */}
+              {}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {analysis.strengths.length > 0 && (
                   <Card>
@@ -307,17 +327,17 @@ export const EmployerAnalysisView: React.FC<EmployerAnalysisViewProps> = ({
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="text-xs">
-                  {wsStatus === 'connected' && <span className="text-success-600">Live: подключено</span>}
-                  {wsStatus === 'connecting' && <span className="text-warning-600">Подключение к Live...</span>}
-                  {wsStatus === 'error' && <span className="text-danger-600">Ошибка соединения</span>}
-                  {wsStatus === 'closed' && <span className="text-secondary-600">Live: отключено</span>}
+                  {connectionStatus === 'connected' && <span className="text-success-600">Live: подключено</span>}
+                  {connectionStatus === 'connecting' && <span className="text-warning-600">Подключение к Live...</span>}
+                  {connectionStatus === 'error' && <span className="text-danger-600">Ошибка соединения</span>}
+                  {connectionStatus === 'disconnected' && <span className="text-secondary-600">Live: отключено</span>}
                 </div>
-                {wsStatus === 'connected' ? (
-                  <Button variant="outline" size="sm" onClick={() => { wsRef.current?.close(); }}>
+                {isConnected ? (
+                  <Button variant="outline" size="sm" onClick={disconnect}>
                     Отключить
                   </Button>
                 ) : (
-                  <Button variant="outline" size="sm" onClick={() => setActiveTab('chat')}>
+                  <Button variant="outline" size="sm" onClick={connect}>
                     Подключить
                   </Button>
                 )}
@@ -377,7 +397,7 @@ export const EmployerAnalysisView: React.FC<EmployerAnalysisViewProps> = ({
 
           {activeTab === 'details' && (
             <div className="space-y-6">
-              {/* Категории оценки */}
+              {}
               {analysis.categories.length > 0 && (
                 <Card>
                   <CardHeader>
@@ -410,7 +430,7 @@ export const EmployerAnalysisView: React.FC<EmployerAnalysisViewProps> = ({
                 </Card>
               )}
 
-              {/* Техническая информация */}
+              {}
               <Card>
                 <CardHeader>
                   <h3 className="text-lg font-semibold text-gray-900">Техническая информация</h3>

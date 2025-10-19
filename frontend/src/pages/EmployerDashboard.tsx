@@ -65,24 +65,40 @@ export const EmployerDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [selectedJob, setSelectedJob] = useState<string>('all');
   
-  // SmartBot state
+  
   const [showSmartBot, setShowSmartBot] = useState(false);
   const [isSmartBotMinimized, setIsSmartBotMinimized] = useState(false);
   const [selectedApplicationId, setSelectedApplicationId] = useState<number | null>(null);
 
-  // EmployerAnalysisView state
+  
   const [showAnalysisView, setShowAnalysisView] = useState(false);
   const [analysisApplicationId, setAnalysisApplicationId] = useState<number | null>(null);
+
+  
+  const openDetailedReport = (applicationId: number) => {
+    setAnalysisApplicationId(applicationId);
+    setShowAnalysisView(true);
+    setShowSmartBot(false);
+    setIsSmartBotMinimized(false);
+  };
+
+  
+  useEffect(() => {
+    
+    return () => {
+      
+    };
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
         
-        // Получаем вакансии работодателя
+        
         const jobsResponse = await jobsAPI.getMyJobs();
         
-        // Преобразуем данные API в формат компонента
+        
         const transformedJobs: Job[] = jobsResponse.data.map(job => ({
           id: job.id.toString(),
           title: job.title,
@@ -90,27 +106,27 @@ export const EmployerDashboard: React.FC = () => {
           salaryMin: job.salary_min,
           salaryMax: job.salary_max,
           employmentType: job.employment_type || 'full-time',
-          category: 'general', // Можно добавить категорию в API позже
+          category: 'general', 
           status: job.is_active ? 'active' : 'paused',
-          applicationsCount: 0, // TODO: Получить количество заявок
-          viewsCount: 0, // TODO: Получить количество просмотров
+          applicationsCount: 0, 
+          viewsCount: 0, 
           postedDate: job.created_at.split('T')[0],
           company_name: job.company_name
         }));
         
         setJobs(transformedJobs);
         
-        // Получаем заявки работодателя
+        
         try {
           const applicationsResponse = await applicationsAPI.getApplications();
           
-          // Преобразуем данные API в формат компонента
+          
            const transformedApplications: Application[] = applicationsResponse.data.map(app => ({
              id: app.id.toString(),
              jobId: app.job_id.toString(),
              jobTitle: app.job_title || 'Не указано',
              candidateName: app.user_name || 'Не указано',
-             candidateEmail: '', // Поле не возвращается API, можно добавить позже
+             candidateEmail: '', 
              resumeTitle: app.resume_title || 'Не указано',
              coverLetter: app.cover_letter || '',
              appliedDate: app.created_at.split('T')[0],
@@ -127,7 +143,7 @@ export const EmployerDashboard: React.FC = () => {
         
       } catch (error) {
         console.error('Ошибка при загрузке данных:', error);
-        // В случае ошибки показываем пустой список
+        
         setJobs([]);
         setApplications([]);
       } finally {
@@ -157,12 +173,12 @@ export const EmployerDashboard: React.FC = () => {
 
   const handleJobStatusChange = async (jobId: string, newStatus: string) => {
     try {
-      // TODO: Отправить запрос на сервер
-      // await fetch(`/api/jobs/${jobId}/status`, {
-      //   method: 'PATCH',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ status: newStatus })
-      // });
+      
+      
+      
+      
+      
+      
 
       setJobs(jobs.map(job => 
         job.id === jobId ? { ...job, status: newStatus as any } : job
@@ -174,12 +190,12 @@ export const EmployerDashboard: React.FC = () => {
 
   const handleApplicationStatusChange = async (applicationId: string, newStatus: string) => {
     try {
-      // TODO: Отправить запрос на сервер
-      // await fetch(`/api/applications/${applicationId}/status`, {
-      //   method: 'PATCH',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify({ status: newStatus })
-      // });
+      
+      
+      
+      
+      
+      
 
       setApplications(applications.map(app => 
         app.id === applicationId ? { ...app, status: newStatus as any } : app
@@ -214,7 +230,7 @@ export const EmployerDashboard: React.FC = () => {
   return (
     <div className="min-h-screen bg-secondary-50">
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Заголовок */}
+        {}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             Панель управления работодателя
@@ -224,7 +240,7 @@ export const EmployerDashboard: React.FC = () => {
           </p>
         </div>
 
-        {/* Статистика */}
+        {}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card>
             <CardBody>
@@ -308,7 +324,7 @@ export const EmployerDashboard: React.FC = () => {
           </Card>
         </div>
 
-        {/* Навигация по табам */}
+        {}
         <div className="mb-6">
           <div className="border-b border-secondary-200">
             <nav className="-mb-px flex space-x-8">
@@ -351,7 +367,7 @@ export const EmployerDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Контент табов */}
+        {}
         {activeTab === 'jobs' && (
           <div className="space-y-6">
             <div className="flex justify-between items-center">
@@ -509,13 +525,16 @@ export const EmployerDashboard: React.FC = () => {
                           </div>
 
                           <div className="flex items-center space-x-2">
-                            <Button 
-                              variant="primary" 
-                              size="sm"
-                              onClick={() => handleStartSmartBotAnalysis(application.id)}
-                            >
-                              SmartBot Анализ
-                            </Button>
+                            {}
+                            {false && (
+                              <Button 
+                                variant="primary" 
+                                size="sm"
+                                onClick={() => handleStartSmartBotAnalysis(application.id)}
+                              >
+                                SmartBot Анализ
+                              </Button>
+                            )}
                             <Button 
                               variant="outline" 
                               size="sm"
@@ -630,7 +649,7 @@ export const EmployerDashboard: React.FC = () => {
         )}
       </div>
       
-      {/* SmartBot Widget */}
+      {}
       {showSmartBot && selectedApplicationId && (
         <SmartBotWidget
           applicationId={selectedApplicationId!}
@@ -641,10 +660,11 @@ export const EmployerDashboard: React.FC = () => {
             setSelectedApplicationId(null);
             setIsSmartBotMinimized(false);
           }}
+          onOpenDetailedReport={openDetailedReport}
         />
       )}
 
-      {/* Employer Analysis View */}
+      {}
       {showAnalysisView && analysisApplicationId && (
         <EmployerAnalysisView
           applicationId={analysisApplicationId}

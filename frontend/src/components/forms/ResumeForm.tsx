@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Button, Input, Textarea, Select, Card, CardHeader, CardBody } from '../ui';
-
 interface Experience {
   id: string;
   company: string;
@@ -10,7 +9,6 @@ interface Experience {
   current: boolean;
   description: string;
 }
-
 interface Education {
   id: string;
   institution: string;
@@ -20,36 +18,24 @@ interface Education {
   endDate: string;
   current: boolean;
 }
-
 interface ResumeFormData {
-  // Личная информация
   firstName: string;
   lastName: string;
   email: string;
   phone: string;
   location: string;
-  
-  // Профессиональная информация
   desiredPosition: string;
   desiredSalary: string;
   summary: string;
-  
-  // Опыт работы
   experiences: Experience[];
-  
-  // Образование
   education: Education[];
-  
-  // Навыки
   skills: string[];
   languages: string[];
 }
-
 interface ResumeFormProps {
   onSubmit: (data: ResumeFormData) => void;
   loading?: boolean;
 }
-
 const salaryRanges = [
   { value: '100000-200000', label: '100,000 - 200,000 ₸' },
   { value: '200000-300000', label: '200,000 - 300,000 ₸' },
@@ -57,7 +43,6 @@ const salaryRanges = [
   { value: '500000-700000', label: '500,000 - 700,000 ₸' },
   { value: '700000+', label: 'Свыше 700,000 ₸' },
 ];
-
 export const ResumeForm: React.FC<ResumeFormProps> = ({ onSubmit, loading = false }) => {
   const [formData, setFormData] = useState<ResumeFormData>({
     firstName: '',
@@ -73,19 +58,15 @@ export const ResumeForm: React.FC<ResumeFormProps> = ({ onSubmit, loading = fals
     skills: [],
     languages: [],
   });
-
   const [errors, setErrors] = useState<any>({});
   const [skillInput, setSkillInput] = useState('');
   const [languageInput, setLanguageInput] = useState('');
-
   const handleChange = (field: keyof ResumeFormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors((prev: any) => ({ ...prev, [field]: '' }));
     }
   };
-
-  // Функции для работы с опытом работы
   const addExperience = () => {
     const newExperience: Experience = {
       id: Date.now().toString(),
@@ -101,7 +82,6 @@ export const ResumeForm: React.FC<ResumeFormProps> = ({ onSubmit, loading = fals
       experiences: [...prev.experiences, newExperience],
     }));
   };
-
   const updateExperience = (id: string, field: keyof Experience, value: any) => {
     setFormData(prev => ({
       ...prev,
@@ -110,15 +90,12 @@ export const ResumeForm: React.FC<ResumeFormProps> = ({ onSubmit, loading = fals
       ),
     }));
   };
-
   const removeExperience = (id: string) => {
     setFormData(prev => ({
       ...prev,
       experiences: prev.experiences.filter(exp => exp.id !== id),
     }));
   };
-
-  // Функции для работы с образованием
   const addEducation = () => {
     const newEducation: Education = {
       id: Date.now().toString(),
@@ -134,7 +111,6 @@ export const ResumeForm: React.FC<ResumeFormProps> = ({ onSubmit, loading = fals
       education: [...prev.education, newEducation],
     }));
   };
-
   const updateEducation = (id: string, field: keyof Education, value: any) => {
     setFormData(prev => ({
       ...prev,
@@ -143,15 +119,12 @@ export const ResumeForm: React.FC<ResumeFormProps> = ({ onSubmit, loading = fals
       ),
     }));
   };
-
   const removeEducation = (id: string) => {
     setFormData(prev => ({
       ...prev,
       education: prev.education.filter(edu => edu.id !== id),
     }));
   };
-
-  // Функции для работы с навыками
   const addSkill = () => {
     if (skillInput.trim() && !formData.skills.includes(skillInput.trim())) {
       setFormData(prev => ({
@@ -161,15 +134,12 @@ export const ResumeForm: React.FC<ResumeFormProps> = ({ onSubmit, loading = fals
       setSkillInput('');
     }
   };
-
   const removeSkill = (skill: string) => {
     setFormData(prev => ({
       ...prev,
       skills: prev.skills.filter(s => s !== skill),
     }));
   };
-
-  // Функции для работы с языками
   const addLanguage = () => {
     if (languageInput.trim() && !formData.languages.includes(languageInput.trim())) {
       setFormData(prev => ({
@@ -179,52 +149,42 @@ export const ResumeForm: React.FC<ResumeFormProps> = ({ onSubmit, loading = fals
       setLanguageInput('');
     }
   };
-
   const removeLanguage = (language: string) => {
     setFormData(prev => ({
       ...prev,
       languages: prev.languages.filter(l => l !== language),
     }));
   };
-
   const validateForm = (): boolean => {
     const newErrors: any = {};
-
     if (!formData.firstName.trim()) {
       newErrors.firstName = 'Имя обязательно';
     }
-
     if (!formData.lastName.trim()) {
       newErrors.lastName = 'Фамилия обязательна';
     }
-
     if (!formData.email.trim()) {
       newErrors.email = 'Email обязателен';
     }
-
     if (!formData.phone.trim()) {
       newErrors.phone = 'Телефон обязателен';
     }
-
     if (!formData.desiredPosition.trim()) {
       newErrors.desiredPosition = 'Желаемая позиция обязательна';
     }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (validateForm()) {
       onSubmit(formData);
     }
   };
-
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       <form onSubmit={handleSubmit} className="space-y-8">
-        {/* Личная информация */}
+        {}
         <Card>
           <CardHeader>
             <h2 className="text-xl font-bold text-gray-900">Личная информация</h2>
@@ -267,8 +227,7 @@ export const ResumeForm: React.FC<ResumeFormProps> = ({ onSubmit, loading = fals
             </div>
           </CardBody>
         </Card>
-
-        {/* Профессиональная информация */}
+        {}
         <Card>
           <CardHeader>
             <h2 className="text-xl font-bold text-gray-900">Профессиональная информация</h2>
@@ -301,8 +260,7 @@ export const ResumeForm: React.FC<ResumeFormProps> = ({ onSubmit, loading = fals
             </div>
           </CardBody>
         </Card>
-
-        {/* Опыт работы */}
+        {}
         <Card>
           <CardHeader>
             <div className="flex justify-between items-center">
@@ -384,8 +342,7 @@ export const ResumeForm: React.FC<ResumeFormProps> = ({ onSubmit, loading = fals
             )}
           </CardBody>
         </Card>
-
-        {/* Образование */}
+        {}
         <Card>
           <CardHeader>
             <div className="flex justify-between items-center">
@@ -464,15 +421,14 @@ export const ResumeForm: React.FC<ResumeFormProps> = ({ onSubmit, loading = fals
             )}
           </CardBody>
         </Card>
-
-        {/* Навыки и языки */}
+        {}
         <Card>
           <CardHeader>
             <h2 className="text-xl font-bold text-gray-900">Навыки и языки</h2>
           </CardHeader>
           <CardBody>
             <div className="space-y-6">
-              {/* Навыки */}
+              {}
               <div>
                 <label className="form-label">Профессиональные навыки</label>
                 <div className="flex gap-2 mb-3">
@@ -504,8 +460,7 @@ export const ResumeForm: React.FC<ResumeFormProps> = ({ onSubmit, loading = fals
                   ))}
                 </div>
               </div>
-
-              {/* Языки */}
+              {}
               <div>
                 <label className="form-label">Языки</label>
                 <div className="flex gap-2 mb-3">
@@ -540,8 +495,7 @@ export const ResumeForm: React.FC<ResumeFormProps> = ({ onSubmit, loading = fals
             </div>
           </CardBody>
         </Card>
-
-        {/* Кнопки */}
+        {}
         <div className="flex flex-col sm:flex-row gap-4 pt-6">
           <Button
             type="submit"
@@ -561,4 +515,4 @@ export const ResumeForm: React.FC<ResumeFormProps> = ({ onSubmit, loading = fals
       </form>
     </div>
   );
-};
+};

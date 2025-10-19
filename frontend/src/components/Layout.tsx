@@ -3,42 +3,35 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { LogOut, User, Briefcase, Home, Menu, X, Plus, BarChart3 } from 'lucide-react';
 import logo from '../assets/image.png';
-
 interface LayoutProps {
   children: React.ReactNode;
 }
-
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user, logout, isEmployer, isJobSeeker } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
   const handleLogout = () => {
     logout();
     navigate('/');
   };
-
   const isActive = (path: string) => location.pathname === path;
-
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
-
   return (
     <div className="min-h-screen bg-secondary-50">
-      {/* Header */}
+      {}
       <header className="bg-white shadow-sm border-b border-secondary-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            {/* Logo */}
+            {}
             <Link to="/" className="flex items-center space-x-2">
               <span className="text-xl font-bold bg-gradient-to-r from-primary-600 to-primary-700 bg-clip-text text-transparent">
                  <img src={logo} alt="MyLink" className="w-45 h-50 rounded-lg" />
               </span>
             </Link>
-
-            {/* Desktop Navigation */}
+            {}
             <nav className="hidden lg:flex space-x-1">
               <Link
                 to="/"
@@ -51,7 +44,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <Home className="h-4 w-4" />
                 <span>Главная</span>
               </Link>
-
               <Link
                 to="/jobs"
                 className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
@@ -63,7 +55,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <Briefcase className="h-4 w-4" />
                 <span>Вакансии</span>
               </Link>
-
               {user && (
                 <>
                   {isJobSeeker && (
@@ -79,7 +70,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         <User className="h-4 w-4" />
                         <span>Профиль</span>
                       </Link>
-
                       <Link
                         to="/create-resume"
                         className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
@@ -93,7 +83,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                       </Link>
                     </>
                   )}
-
                   {isEmployer && (
                     <>
                       <Link
@@ -107,7 +96,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         <BarChart3 className="h-4 w-4" />
                         <span>Панель управления</span>
                       </Link>
-
                       <Link
                         to="/create-job"
                         className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
@@ -124,8 +112,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </>
               )}
             </nav>
-
-            {/* Desktop User menu */}
+            {}
             <div className="hidden lg:flex items-center space-x-4">
               {user ? (
                 <div className="flex items-center space-x-4">
@@ -165,8 +152,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </div>
               )}
             </div>
-
-            {/* Mobile menu button */}
+            {}
             <div className="lg:hidden">
               <button
                 onClick={toggleMobileMenu}
@@ -181,8 +167,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             </div>
           </div>
         </div>
-
-        {/* Mobile Navigation */}
+        {}
         {isMobileMenuOpen && (
           <div className="lg:hidden border-t border-secondary-200 bg-white">
             <div className="px-4 py-4 space-y-2">
@@ -198,18 +183,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <Home className="h-5 w-5" />
                 <span>Главная</span>
               </Link>
-              {/* ... existing code ... */}
+              {}
             </div>
           </div>
         )}
       </header>
-
-      {/* Main content */}
+      {}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {children}
       </main>
     </div>
   );
 };
-
-export default Layout;
+export default Layout;

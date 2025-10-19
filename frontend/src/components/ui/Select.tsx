@@ -1,11 +1,9 @@
 import React from 'react';
 import { cn } from '../../utils/cn';
-
 interface SelectOption {
   value: string;
   label: string;
 }
-
 interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   label?: string;
   error?: string;
@@ -13,7 +11,6 @@ interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   options: SelectOption[];
   placeholder?: string;
 }
-
 export const Select: React.FC<SelectProps> = ({
   label,
   error,
@@ -25,7 +22,6 @@ export const Select: React.FC<SelectProps> = ({
   ...props
 }) => {
   const selectId = id || `select-${Math.random().toString(36).substr(2, 9)}`;
-
   return (
     <div className="w-full">
       {label && (
@@ -57,4 +53,4 @@ export const Select: React.FC<SelectProps> = ({
       {help && !error && <p className="form-help">{help}</p>}
     </div>
   );
-};
+};

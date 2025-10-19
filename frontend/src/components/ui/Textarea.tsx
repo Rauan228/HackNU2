@@ -1,12 +1,10 @@
 import React from 'react';
 import { cn } from '../../utils/cn';
-
 interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   label?: string;
   error?: string;
   help?: string;
 }
-
 export const Textarea: React.FC<TextareaProps> = ({
   label,
   error,
@@ -16,7 +14,6 @@ export const Textarea: React.FC<TextareaProps> = ({
   ...props
 }) => {
   const textareaId = id || `textarea-${Math.random().toString(36).substr(2, 9)}`;
-
   return (
     <div className="w-full">
       {label && (
@@ -37,4 +34,4 @@ export const Textarea: React.FC<TextareaProps> = ({
       {help && !error && <p className="form-help">{help}</p>}
     </div>
   );
-};
+};

@@ -1,13 +1,11 @@
 import React from 'react';
 import { cn } from '../../utils/cn';
-
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
   help?: string;
   icon?: React.ReactNode;
 }
-
 export const Input: React.FC<InputProps> = ({
   label,
   error,
@@ -18,7 +16,6 @@ export const Input: React.FC<InputProps> = ({
   ...props
 }) => {
   const inputId = id || `input-${Math.random().toString(36).substr(2, 9)}`;
-
   return (
     <div className="w-full">
       {label && (
@@ -49,4 +46,4 @@ export const Input: React.FC<InputProps> = ({
       {help && !error && <p className="form-help">{help}</p>}
     </div>
   );
-};
+};
