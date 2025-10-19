@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { JobCard } from '../components/job/JobCard';
 import { Search, MapPin, Plus } from 'lucide-react';
 import SmartBotWidget from '../components/SmartBotWidget';
+import { Loader } from '../components/ui';
 
 const Jobs: React.FC = () => {
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -17,6 +18,7 @@ const Jobs: React.FC = () => {
   const [hasMore, setHasMore] = useState(true);
   const [showSmartBot, setShowSmartBot] = useState(false);
   const [smartBotApplicationId, setSmartBotApplicationId] = useState<number | null>(null);
+  const [isApplying, setIsApplying] = useState(false);
   
   const { isEmployer } = useAuth();
   const navigate = useNavigate();
@@ -64,6 +66,7 @@ const Jobs: React.FC = () => {
   };
 
   const handleApply = async (jobId: number) => {
+    setIsApplying(true);
     try {
       // Получаем список резюме пользователя
       const resumesResponse = await resumesAPI.getResumes();
@@ -99,6 +102,8 @@ const Jobs: React.FC = () => {
       console.error('Детали ошибки:', (error as any).response?.data);
       console.error('Статус ошибки:', (error as any).response?.status);
       alert(`Ошибка при отправке отклика: ${(error as any).response?.data?.detail || (error as any).message}`);
+    } finally {
+      setIsApplying(false);
     }
   };
 
@@ -108,6 +113,18 @@ const Jobs: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* Overlay loader while applying */}
+      {isApplying && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-lg shadow p-6 flex items-center space-x-3">
+            <span className="inline-block w-6 h-6 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin" />
+            <div>
+              <div className="text-gray-900 font-medium">Отклик отправляется...</div>
+              <div className="text-sm text-gray-600">Открываем чат со SmartBot</div>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900">Вакансии</h1>

@@ -13,6 +13,7 @@ from models.chat import (
     SmartBotSession, SmartBotMessage, SmartBotSessionStatus, 
     SmartBotMessageType, CandidateAnalysis, AnalysisCategory, AnalysisStatus
 )
+from services.ws_manager import ws_manager
 
 
 class ApplicationAnalyzer:
@@ -112,6 +113,21 @@ class ApplicationAnalyzer:
             db.commit()
             db.refresh(session)
             
+            # Broadcast initial bot message to session subscribers
+            try:
+                await ws_manager.broadcast_session(session.session_id, {
+                    "event": "chat_message",
+                    "session_id": session.session_id,
+                    "message": {
+                        "role": "bot",
+                        "type": bot_message.message_type,
+                        "content": bot_message.content
+                    },
+                    "session_status": session.status
+                })
+            except Exception as e:
+                logging.error(f"WS broadcast failed (initial message): {e}")
+            
             return session
             
         except Exception as e:
@@ -134,6 +150,20 @@ class ApplicationAnalyzer:
             message_metadata=None
         )
         db.add(user_msg)
+        
+        # Broadcast candidate message immediately
+        try:
+            await ws_manager.broadcast_session(session_id, {
+                "event": "chat_message",
+                "session_id": session_id,
+                "message": {
+                    "role": "candidate",
+                    "type": user_msg.message_type,
+                    "content": user_message
+                }
+            })
+        except Exception as e:
+            logging.error(f"WS broadcast failed (candidate message): {e}")
         
         # Get conversation history
         messages = db.query(SmartBotMessage).filter(
@@ -223,6 +253,21 @@ class ApplicationAnalyzer:
             session.status = SmartBotSessionStatus.ACTIVE
             db.commit()
             
+            # Broadcast bot follow-up question
+            try:
+                await ws_manager.broadcast_session(session_id, {
+                    "event": "chat_message",
+                    "session_id": session_id,
+                    "message": {
+                        "role": "bot",
+                        "type": bot_message.message_type,
+                        "content": bot_message.content
+                    },
+                    "session_status": session.status
+                })
+            except Exception as e:
+                logging.error(f"WS broadcast failed (bot question): {e}")
+            
             return {
                 "message": bot_message.content,
                 "session_status": session.status,
@@ -259,6 +304,30 @@ class ApplicationAnalyzer:
 
         db.commit()
 
+        # Broadcast completion and final bot message
+        try:
+            await ws_manager.broadcast_session(session_id, {
+                "event": "chat_message",
+                "session_id": session_id,
+                "message": {
+                    "role": "bot",
+                    "type": bot_message.message_type,
+                    "content": bot_message.content
+                },
+                "session_status": session.status
+            })
+            await ws_manager.broadcast_session(session_id, {
+                "event": "session_completed",
+                "session_id": session_id,
+                "final": {
+                    "final_score": analysis.final_score if analysis else None,
+                    "recommendation": analysis.recommendation if analysis else None,
+                    "summary": analysis.summary if analysis else None
+                }
+            })
+        except Exception as e:
+            logging.error(f"WS broadcast failed (completion): {e}")
+        
         # Send notification to employer about completed analysis
         try:
             from services.notification_service import notification_service
@@ -271,7 +340,8 @@ class ApplicationAnalyzer:
             "session_status": session.status,
             "is_completed": session.status == SmartBotSessionStatus.COMPLETED
         }
-    
+
+
     async def _analyze_application(self, job: Job, resume: Resume, user: User) -> Dict[str, Any]:
         """Analyze job application and identify discrepancies"""
         

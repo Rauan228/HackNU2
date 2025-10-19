@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { LogOut, User, Briefcase, Home, Menu, X, Plus, BarChart3 } from 'lucide-react';
+import logo from '../assets/image.png';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -32,11 +33,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
             <Link to="/" className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center">
-                <Briefcase className="h-5 w-5 text-white" />
-              </div>
               <span className="text-xl font-bold bg-gradient-to-r from-primary-600 to-primary-700 bg-clip-text text-transparent">
-                JobBoard KZ
+                 <img src={logo} alt="MyLink" className="w-45 h-50 rounded-lg" />
               </span>
             </Link>
 
@@ -200,133 +198,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <Home className="h-5 w-5" />
                 <span>Главная</span>
               </Link>
-
-              <Link
-                to="/jobs"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={`flex items-center space-x-3 px-3 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                  isActive('/jobs') || location.pathname.startsWith('/jobs/')
-                    ? 'text-primary-600 bg-primary-50' 
-                    : 'text-secondary-700 hover:text-primary-600 hover:bg-secondary-50'
-                }`}
-              >
-                <Briefcase className="h-5 w-5" />
-                <span>Вакансии</span>
-              </Link>
-
-              {user && (
-                <>
-                  {isJobSeeker && (
-                    <>
-                      <Link
-                        to="/profile"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className={`flex items-center space-x-3 px-3 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                          isActive('/profile') 
-                            ? 'text-primary-600 bg-primary-50' 
-                            : 'text-secondary-700 hover:text-primary-600 hover:bg-secondary-50'
-                        }`}
-                      >
-                        <User className="h-5 w-5" />
-                        <span>Профиль</span>
-                      </Link>
-
-                      <Link
-                        to="/create-resume"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className={`flex items-center space-x-3 px-3 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                          isActive('/create-resume') 
-                            ? 'text-primary-600 bg-primary-50' 
-                            : 'text-secondary-700 hover:text-primary-600 hover:bg-secondary-50'
-                        }`}
-                      >
-                        <Plus className="h-5 w-5" />
-                        <span>Создать резюме</span>
-                      </Link>
-                    </>
-                  )}
-
-                  {isEmployer && (
-                    <>
-                      <Link
-                        to="/employer/dashboard"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className={`flex items-center space-x-3 px-3 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                          isActive('/employer/dashboard') 
-                            ? 'text-primary-600 bg-primary-50' 
-                            : 'text-secondary-700 hover:text-primary-600 hover:bg-secondary-50'
-                        }`}
-                      >
-                        <BarChart3 className="h-5 w-5" />
-                        <span>Панель управления</span>
-                      </Link>
-
-                      <Link
-                        to="/create-job"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className={`flex items-center space-x-3 px-3 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                          isActive('/create-job') 
-                            ? 'text-primary-600 bg-primary-50' 
-                            : 'text-secondary-700 hover:text-primary-600 hover:bg-secondary-50'
-                        }`}
-                      >
-                        <Plus className="h-5 w-5" />
-                        <span>Создать вакансию</span>
-                      </Link>
-                    </>
-                  )}
-                </>
-              )}
-
-              {/* Mobile User Section */}
-              <div className="pt-4 border-t border-secondary-200">
-                {user ? (
-                  <div className="space-y-2">
-                    <div className="flex items-center space-x-3 px-3 py-3 bg-secondary-50 rounded-lg">
-                      <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
-                        <User className="h-5 w-5 text-primary-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-secondary-900">{user.full_name}</p>
-                        <p className="text-xs text-secondary-500">
-                          {isEmployer ? 'Работодатель' : 'Соискатель'}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={handleLogout}
-                      className="w-full flex items-center space-x-3 px-3 py-3 rounded-lg text-sm font-medium text-danger-600 hover:bg-danger-50 transition-all duration-200"
-                    >
-                      <LogOut className="h-5 w-5" />
-                      <span>Выйти</span>
-                    </button>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <Link
-                      to="/login"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className="w-full flex items-center justify-center px-4 py-3 rounded-lg text-sm font-medium text-secondary-700 hover:text-primary-600 hover:bg-secondary-50 transition-all duration-200"
-                    >
-                      Войти
-                    </Link>
-                    <Link
-                      to="/register"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className="w-full flex items-center justify-center bg-gradient-to-r from-primary-600 to-primary-700 text-white px-4 py-3 rounded-lg text-sm font-medium hover:from-primary-700 hover:to-primary-800 transition-all duration-200"
-                    >
-                      Регистрация
-                    </Link>
-                  </div>
-                )}
-              </div>
+              {/* ... existing code ... */}
             </div>
           </div>
         )}
       </header>
 
       {/* Main content */}
-      <main className="flex-1">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {children}
       </main>
     </div>

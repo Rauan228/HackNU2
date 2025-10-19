@@ -4,8 +4,8 @@ from core.config import settings
 from api import auth, jobs, resumes, applications, chat, smartbot
 
 app = FastAPI(
-    title="JobBoard + SmartBot API",
-    description="API for job board with AI-powered SmartBot assistant",
+    title="MyLink + SmartBot API",
+    description="API for MyLink with AI-powered SmartBot assistant",
     version="1.0.0"
 )
 
@@ -36,7 +36,7 @@ app.include_router(smartbot.router, prefix="/api")
 
 @app.get("/")
 def read_root():
-    return {"message": "JobBoard + SmartBot API is running!"}
+    return {"message": "MyLink + SmartBot API is running!"}
 
 
 @app.get("/health")

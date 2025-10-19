@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardBody, CardHeader, Button, Badge } from './ui';
-import { smartBotAPI } from '../services/api';
+import api, { smartBotAPI } from '../services/api';
 import type { EmployerAnalysisView as EmployerAnalysisData } from '../services/api';
 
 interface EmployerAnalysisViewProps {
@@ -16,6 +16,9 @@ export const EmployerAnalysisView: React.FC<EmployerAnalysisViewProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'summary' | 'chat' | 'details'>('summary');
+  const [wsStatus, setWsStatus] = useState<'idle' | 'connecting' | 'connected' | 'closed' | 'error'>('idle');
+  const [liveMessages, setLiveMessages] = useState<Array<{ id?: string; role: 'USER' | 'ASSISTANT' | 'SYSTEM'; content: string; created_at: string }>>([]);
+  const wsRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
     fetchAnalysis();
@@ -179,7 +182,7 @@ export const EmployerAnalysisView: React.FC<EmployerAnalysisViewProps> = ({
                   : 'border-transparent text-secondary-500 hover:text-secondary-700 hover:border-secondary-300'
               }`}
             >
-              История чата ({analysis.chat_messages.length})
+              История чата ({(analysis.chat_messages.length + liveMessages.length)})
             </button>
             <button
               onClick={() => setActiveTab('details')}
@@ -302,51 +305,73 @@ export const EmployerAnalysisView: React.FC<EmployerAnalysisViewProps> = ({
 
           {activeTab === 'chat' && (
             <div className="space-y-4">
-              <div className="text-sm text-secondary-600 mb-4">
+              <div className="flex items-center justify-between">
+                <div className="text-xs">
+                  {wsStatus === 'connected' && <span className="text-success-600">Live: подключено</span>}
+                  {wsStatus === 'connecting' && <span className="text-warning-600">Подключение к Live...</span>}
+                  {wsStatus === 'error' && <span className="text-danger-600">Ошибка соединения</span>}
+                  {wsStatus === 'closed' && <span className="text-secondary-600">Live: отключено</span>}
+                </div>
+                {wsStatus === 'connected' ? (
+                  <Button variant="outline" size="sm" onClick={() => { wsRef.current?.close(); }}>
+                    Отключить
+                  </Button>
+                ) : (
+                  <Button variant="outline" size="sm" onClick={() => setActiveTab('chat')}>
+                    Подключить
+                  </Button>
+                )}
+              </div>
+              <div className="text-sm text-secondary-600 mb-2">
                 История переписки кандидата с ИИ-ассистентом
               </div>
-              
-              {analysis.chat_messages.length === 0 ? (
-                <Card>
-                  <CardBody>
-                    <div className="text-center py-8">
-                      <svg className="w-12 h-12 text-secondary-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                      </svg>
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">Нет сообщений</h3>
-                      <p className="text-secondary-600">Переписка с кандидатом еще не началась</p>
-                    </div>
-                  </CardBody>
-                </Card>
-              ) : (
-                <div className="space-y-3">
-                  {analysis.chat_messages.map((message, index) => (
-                    <div
-                      key={message.id || index}
-                      className={`flex ${message.role === 'USER' ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div
-                        className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                          message.role === 'USER'
-                            ? 'bg-primary-500 text-white'
-                            : message.role === 'ASSISTANT'
-                            ? 'bg-secondary-100 text-secondary-900'
-                            : 'bg-warning-100 text-warning-900'
-                        }`}
-                      >
-                        <div className="text-sm font-medium mb-1">
-                          {message.role === 'USER' ? 'Кандидат' : 
-                           message.role === 'ASSISTANT' ? 'ИИ-Ассистент' : 'Система'}
+              {(() => {
+                const messagesToShow = [...analysis.chat_messages, ...liveMessages];
+                if (messagesToShow.length === 0) {
+                  return (
+                    <Card>
+                      <CardBody>
+                        <div className="text-center py-8">
+                          <svg className="w-12 h-12 text-secondary-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                          </svg>
+                          <h3 className="text-lg font-medium text-gray-900 mb-2">Нет сообщений</h3>
+                          <p className="text-secondary-600">Переписка с кандидатом еще не началась</p>
                         </div>
-                        <div className="text-sm">{message.content}</div>
-                        <div className="text-xs opacity-75 mt-1">
-                          {formatDate(message.created_at)}
+                      </CardBody>
+                    </Card>
+                  );
+                }
+                return (
+                  <div className="space-y-3">
+                    {messagesToShow.map((message, index) => (
+                      <div
+                        key={message.id || `${index}`}
+                        className={`flex ${message.role === 'USER' ? 'justify-end' : 'justify-start'}`}
+                      >
+                        <div
+                          className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                            message.role === 'USER'
+                              ? 'bg-primary-500 text-white'
+                              : message.role === 'ASSISTANT'
+                              ? 'bg-secondary-100 text-secondary-900'
+                              : 'bg-warning-100 text-warning-900'
+                          }`}
+                        >
+                          <div className="text-sm font-medium mb-1">
+                            {message.role === 'USER' ? 'Кандидат' : 
+                             message.role === 'ASSISTANT' ? 'ИИ-Ассистент' : 'Система'}
+                          </div>
+                          <div className="text-sm">{message.content}</div>
+                          <div className="text-xs opacity-75 mt-1">
+                            {formatDate(message.created_at)}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
           )}
 

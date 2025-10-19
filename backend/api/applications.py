@@ -9,6 +9,7 @@ from models.resumes import Resume
 from models.applications import JobApplication
 from schemas.applications import ApplicationCreate, ApplicationUpdate, ApplicationResponse, ApplicationWithDetailsResponse
 from services.application_analyzer import application_analyzer
+from services.ws_manager import ws_manager
 
 router = APIRouter(prefix="/applications", tags=["applications"])
 
@@ -147,6 +148,18 @@ async def create_application(
     db.add(db_application)
     db.commit()
     db.refresh(db_application)
+    
+    # Broadcast job-level event: new application
+    try:
+        await ws_manager.broadcast_job(db_application.job_id, {
+            "event": "application_created",
+            "application_id": db_application.id,
+            "job_id": db_application.job_id,
+            "user_id": db_application.user_id,
+            "created_at": db_application.created_at.isoformat() if hasattr(db_application, 'created_at') and db_application.created_at else None
+        })
+    except Exception as e:
+        print(f"WS broadcast failed (application_created): {e}")
     
     # Start SmartBot analysis session automatically after application creation
     try:

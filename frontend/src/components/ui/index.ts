@@ -4,3 +4,4 @@ export { Textarea } from './Textarea';
 export { Select } from './Select';
 export { Card, CardHeader, CardBody, CardFooter } from './Card';
 export { Badge } from './Badge';
+export { Loader } from './Loader';

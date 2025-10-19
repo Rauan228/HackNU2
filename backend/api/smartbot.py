@@ -6,7 +6,7 @@ from models.applications import JobApplication
 from models.chat import SmartBotSession, SmartBotMessage, CandidateAnalysis, AnalysisCategory
 from models.jobs import Job
 from models.resumes import Resume
-from models.users import User
+from models.users import User, UserType
 from schemas.chat import (
     SmartBotInitRequest, SmartBotInitResponse, SmartBotChatRequest, 
     SmartBotChatResponse, SmartBotSessionResponse, EmployerAnalysisView
@@ -14,6 +14,10 @@ from schemas.chat import (
 from services.application_analyzer import application_analyzer
 from core.deps import get_current_active_user
 import json
+from fastapi import WebSocket, WebSocketDisconnect
+from core.security import verify_token
+from services.ws_manager import ws_manager
+import asyncio
 
 router = APIRouter(prefix="/smartbot", tags=["SmartBot"])
 
@@ -569,3 +573,93 @@ def _get_recommendation_from_score(score: int) -> str:
         return "consider"
     else:
         return "reject"
+
+
+@router.websocket("/employer/ws/jobs/{job_id}")
+async def employer_jobs_ws(websocket: WebSocket, job_id: int, db: Session = Depends(get_db)):
+    await websocket.accept()
+    # Auth via Authorization: Bearer <token> or ?token=...
+    auth_header = websocket.headers.get("authorization")
+    token = None
+    if auth_header and auth_header.lower().startswith("bearer "):
+        token = auth_header.split(" ", 1)[1].strip()
+    # Fallback to query parameter for browser clients
+    if not token:
+        token = websocket.query_params.get("token")
+    payload = verify_token(token) if token else None
+    if not payload:
+        await websocket.send_json({"event": "error", "message": "Unauthorized"})
+        await websocket.close(code=1008)
+        return
+    email = payload.get("sub")
+    user = db.query(User).filter(User.email == email).first()
+    if not user or user.user_type != UserType.EMPLOYER:
+        await websocket.send_json({"event": "error", "message": "Forbidden"})
+        await websocket.close(code=1008)
+        return
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job or job.employer_id != user.id:
+        await websocket.send_json({"event": "error", "message": "Job not found or not owned"})
+        await websocket.close(code=1008)
+        return
+
+    await ws_manager.connect_job(job_id, websocket)
+    await websocket.send_json({"event": "subscribed", "job_id": job_id})
+
+    try:
+        while True:
+            # Keep connection alive
+            await asyncio.sleep(60)
+    except WebSocketDisconnect:
+        await ws_manager.disconnect_job(job_id, websocket)
+
+
+@router.websocket("/employer/ws/sessions/{session_id}")
+async def employer_session_ws(websocket: WebSocket, session_id: str, db: Session = Depends(get_db)):
+    await websocket.accept()
+    # Auth via Authorization: Bearer <token> or ?token=...
+    auth_header = websocket.headers.get("authorization")
+    token = None
+    if auth_header and auth_header.lower().startswith("bearer "):
+        token = auth_header.split(" ", 1)[1].strip()
+    # Fallback to query parameter for browser clients
+    if not token:
+        token = websocket.query_params.get("token")
+    payload = verify_token(token) if token else None
+    if not payload:
+        await websocket.send_json({"event": "error", "message": "Unauthorized"})
+        await websocket.close(code=1008)
+        return
+    email = payload.get("sub")
+    user = db.query(User).filter(User.email == email).first()
+    if not user or user.user_type != UserType.EMPLOYER:
+        await websocket.send_json({"event": "error", "message": "Forbidden"})
+        await websocket.close(code=1008)
+        return
+
+    session = db.query(SmartBotSession).filter(SmartBotSession.session_id == session_id).first()
+    if not session:
+        await websocket.send_json({"event": "error", "message": "Session not found"})
+        await websocket.close(code=1008)
+        return
+
+    application = db.query(JobApplication).filter(JobApplication.id == session.application_id).first()
+    if not application:
+        await websocket.send_json({"event": "error", "message": "Application not found"})
+        await websocket.close(code=1008)
+        return
+
+    job = db.query(Job).filter(Job.id == application.job_id).first()
+    if not job or job.employer_id != user.id:
+        await websocket.send_json({"event": "error", "message": "Forbidden"})
+        await websocket.close(code=1008)
+        return
+
+    await ws_manager.connect_session(session_id, websocket)
+    await websocket.send_json({"event": "subscribed", "session_id": session_id})
+
+    try:
+        while True:
+            await asyncio.sleep(60)
+    except WebSocketDisconnect:
+        await ws_manager.disconnect_session(session_id, websocket)

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#4f46e5"/>
+      <stop offset="1" stop-color="#7c3aed"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="56" height="56" rx="14" fill="url(#g)"/>
+  <!-- Chain link icon -->
+  <path d="M26 24c3.5-3.5 9.2-3.5 12.7 0l2.3 2.3c3.5 3.5 3.5 9.2 0 12.7" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M38 40c-3.5 3.5-9.2 3.5-12.7 0l-2.3-2.3c-3.5-3.5-3.5-9.2 0-12.7" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Subtle ML letters -->
+  <text x="32" y="54" text-anchor="middle" font-family="Inter, system-ui, -apple-system" font-size="12" fill="#ffffff" opacity="0.85">MyLink</text>
+</svg>
